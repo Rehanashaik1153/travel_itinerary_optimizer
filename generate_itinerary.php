@@ -1,12 +1,12 @@
 <?php
 
 /* =====================================================
-   WANDERAI - DYNAMIC ITINERARY GENERATOR
+   WANDERAI - DYNAMIC AI ITINERARY GENERATOR
    ===================================================== */
 
 
 /* =====================================================
-   CALCULATE APPROXIMATE DISTANCE
+   DISTANCE CALCULATION
    ===================================================== */
 
 function calculateDistance(
@@ -28,29 +28,25 @@ function calculateDistance(
         sin($latitudeDifference / 2)
         *
         sin($latitudeDifference / 2)
-
         +
-
         cos(deg2rad($latitude1))
         *
         cos(deg2rad($latitude2))
-
         *
-
         sin($longitudeDifference / 2)
         *
         sin($longitudeDifference / 2);
 
+    $a = min(1, max(0, $a));
+
     $c =
-        2
-        *
+        2 *
         atan2(
             sqrt($a),
             sqrt(1 - $a)
         );
 
     return $earthRadius * $c;
-
 }
 
 
@@ -64,9 +60,13 @@ function estimateTravelMinutes(
 ) {
 
     $transport =
-        strtolower(trim($transport));
+        strtolower(
+            trim(
+                (string)$transport
+            )
+        );
 
-    $speed = 30;
+    $speed = 35;
 
     if (
         strpos($transport, "walking") !== false
@@ -75,35 +75,40 @@ function estimateTravelMinutes(
         $speed = 5;
 
     } elseif (
-        strpos($transport, "bike") !== false
+        strpos($transport, "bike") !== false ||
+        strpos($transport, "bicycle") !== false
     ) {
 
-        $speed = 35;
+        $speed = 30;
 
     } elseif (
-        strpos($transport, "public") !== false
+        strpos($transport, "public") !== false ||
+        strpos($transport, "bus") !== false ||
+        strpos($transport, "train") !== false
     ) {
 
         $speed = 25;
 
     } elseif (
-        strpos($transport, "car") !== false
+        strpos($transport, "car") !== false ||
+        strpos($transport, "taxi") !== false ||
+        strpos($transport, "cab") !== false
     ) {
 
         $speed = 40;
-
     }
 
+    if ($distanceKm <= 0.05) {
+        return 0;
+    }
 
     $minutes =
         ($distanceKm / $speed) * 60;
 
-
     return max(
-        10,
+        5,
         (int)round($minutes)
     );
-
 }
 
 
@@ -117,121 +122,186 @@ function estimateVisitDuration(
 
     $category =
         strtolower(
-            $place["category"] ?? ""
+            trim(
+                $place["category"] ?? ""
+            )
         );
 
     $name =
         strtolower(
-            $place["name"] ?? ""
+            trim(
+                $place["name"] ?? ""
+            )
         );
 
 
-    /* Museums and galleries */
+    /* ---------------------------------------------
+       Waterfalls
+       --------------------------------------------- */
 
     if (
-        strpos($category, "museum") !== false
-        ||
-        strpos($category, "gallery") !== false
+        strpos($name, "waterfall") !== false ||
+        strpos($name, "waterfalls") !== false ||
+        preg_match(
+            "/\bfalls\b/i",
+            $name
+        )
     ) {
 
         return 120;
-
     }
 
 
-    /* Entertainment */
+    /* ---------------------------------------------
+       Wildlife
+       --------------------------------------------- */
 
     if (
-        strpos($category, "entertainment") !== false
-        ||
-        strpos($category, "zoo") !== false
-        ||
-        strpos($category, "theme") !== false
+        strpos($name, "wildlife") !== false ||
+        strpos($name, "sanctuary") !== false ||
+        strpos($name, "national park") !== false ||
+        strpos($category, "wildlife") !== false
     ) {
 
         return 180;
-
     }
 
 
-    /* Parks and gardens */
+    /* ---------------------------------------------
+       Beach
+       --------------------------------------------- */
 
     if (
-        strpos($category, "park") !== false
-        ||
-        strpos($name, "park") !== false
-        ||
+        strpos($name, "beach") !== false ||
+        strpos($category, "beach") !== false
+    ) {
+
+        return 150;
+    }
+
+
+    /* ---------------------------------------------
+       Museum / Gallery
+       --------------------------------------------- */
+
+    if (
+        strpos($category, "museum") !== false ||
+        strpos($category, "gallery") !== false ||
+        strpos($name, "museum") !== false ||
+        strpos($name, "gallery") !== false
+    ) {
+
+        return 120;
+    }
+
+
+    /* ---------------------------------------------
+       Entertainment
+       --------------------------------------------- */
+
+    if (
+        strpos($category, "entertainment") !== false ||
+        strpos($name, "water park") !== false ||
+        strpos($name, "waterpark") !== false ||
+        strpos($name, "theme park") !== false ||
+        strpos($name, "amusement") !== false ||
+        strpos($name, "aquarium") !== false ||
+        strpos($name, "zoo") !== false
+    ) {
+
+        return 180;
+    }
+
+
+    /* ---------------------------------------------
+       Historical / Cultural
+       --------------------------------------------- */
+
+    if (
+        strpos($category, "historical") !== false ||
+        strpos($category, "historic") !== false ||
+        strpos($category, "cultural") !== false ||
+        strpos($category, "heritage") !== false ||
+        strpos($name, "fort") !== false ||
+        strpos($name, "palace") !== false ||
+        strpos($name, "monument") !== false ||
+        strpos($name, "heritage") !== false ||
+        strpos($name, "museum") !== false
+    ) {
+
+        return 120;
+    }
+
+
+    /* ---------------------------------------------
+       Religious
+       --------------------------------------------- */
+
+    if (
+        strpos($category, "religious") !== false ||
+        strpos($category, "worship") !== false ||
+        strpos($name, "temple") !== false ||
+        strpos($name, "church") !== false ||
+        strpos($name, "mosque") !== false ||
+        strpos($name, "chapel") !== false ||
+        strpos($name, "shrine") !== false ||
+        strpos($name, "monastery") !== false
+    ) {
+
+        return 60;
+    }
+
+
+    /* ---------------------------------------------
+       Nature / Scenic
+       --------------------------------------------- */
+
+    if (
+        strpos($category, "nature") !== false ||
+        strpos($category, "scenic") !== false ||
+        strpos($name, "viewpoint") !== false ||
+        strpos($name, "view point") !== false ||
+        strpos($name, "lookout") !== false ||
+        strpos($name, "lake") !== false ||
+        strpos($name, "river") !== false ||
+        strpos($name, "mountain") !== false ||
+        strpos($name, "valley") !== false ||
+        strpos($name, "forest") !== false ||
         strpos($name, "garden") !== false
     ) {
 
         return 120;
-
     }
 
 
-    /* Nature */
+    /* ---------------------------------------------
+       Parks
+       --------------------------------------------- */
 
     if (
-        strpos($category, "nature") !== false
-        ||
-        strpos($category, "scenic") !== false
-    ) {
-
-        return 120;
-
-    }
-
-
-    /* Historical */
-
-    if (
-        strpos($category, "historic") !== false
-        ||
-        strpos($category, "cultural") !== false
-    ) {
-
-        return 120;
-
-    }
-
-
-    /* Food */
-
-    if (
-        strpos($category, "food") !== false
+        strpos($category, "park") !== false ||
+        strpos($name, "park") !== false
     ) {
 
         return 90;
-
     }
 
 
-    /* Shopping */
+    /* ---------------------------------------------
+       General tourist attraction
+       --------------------------------------------- */
 
     if (
-        strpos($category, "shopping") !== false
+        strpos($category, "tourist") !== false ||
+        strpos($category, "attraction") !== false ||
+        strpos($category, "tourism") !== false
     ) {
 
-        return 120;
-
+        return 90;
     }
 
-
-    /* Religious */
-
-    if (
-        strpos($category, "religious") !== false
-    ) {
-
-        return 60;
-
-    }
-
-
-    /* Default */
 
     return 90;
-
 }
 
 
@@ -243,85 +313,734 @@ function formatItineraryTime(
     $minutes
 ) {
 
+    $minutes =
+        max(
+            0,
+            (int)$minutes
+        );
+
     $hours =
-        floor($minutes / 60);
+        floor(
+            $minutes / 60
+        );
 
     $remainingMinutes =
         $minutes % 60;
 
+    $hours =
+        $hours % 24;
 
     return sprintf(
         "%02d:%02d",
         $hours,
         $remainingMinutes
     );
-
 }
 
 
 /* =====================================================
-   FIND NEAREST PLACE
+   PARSE OPENING HOURS
    ===================================================== */
 
-function findNearestPlaceIndex(
-    $places,
-    $currentLatitude,
-    $currentLongitude
+function getOpeningTimeRange(
+    $openingHours
 ) {
 
-    $nearestIndex = null;
+    $openingHours =
+        trim(
+            (string)$openingHours
+        );
 
-    $shortestDistance =
-        PHP_FLOAT_MAX;
+    if (
+        $openingHours === ""
+    ) {
+
+        return null;
+    }
+
+
+    preg_match_all(
+        '/([01]\d|2[0-3]):([0-5]\d)\s*-\s*([01]\d|2[0-3]):([0-5]\d)/',
+        $openingHours,
+        $matches,
+        PREG_SET_ORDER
+    );
+
+
+    if (
+        empty($matches)
+    ) {
+
+        return null;
+    }
+
+
+    $ranges = [];
+
+
+    foreach (
+        $matches as $match
+    ) {
+
+        $startHour =
+            (int)$match[1];
+
+        $startMinute =
+            (int)$match[2];
+
+        $endHour =
+            (int)$match[3];
+
+        $endMinute =
+            (int)$match[4];
+
+
+        $start =
+            ($startHour * 60)
+            +
+            $startMinute;
+
+        $end =
+            ($endHour * 60)
+            +
+            $endMinute;
+
+
+        if (
+            $end <= $start
+        ) {
+
+            continue;
+        }
+
+
+        $ranges[] = [
+            "start" => $start,
+            "end" => $end
+        ];
+    }
+
+
+    if (
+        empty($ranges)
+    ) {
+
+        return null;
+    }
+
+
+    usort(
+        $ranges,
+        function ($a, $b) {
+
+            return
+                $a["start"]
+                <=>
+                $b["start"];
+        }
+    );
+
+
+    return [
+        "open" =>
+            $ranges[0]["start"],
+
+        "close" =>
+            max(
+                array_column(
+                    $ranges,
+                    "end"
+                )
+            ),
+
+        "ranges" =>
+            $ranges
+    ];
+}
+
+
+/* =====================================================
+   FIND VALID OPENING PERIOD
+   ===================================================== */
+
+function findValidOpeningStart(
+    $startTime,
+    $visitDuration,
+    $openingHours
+) {
+
+    $range =
+        getOpeningTimeRange(
+            $openingHours
+        );
+
+
+    /*
+     * Unknown opening hours.
+     */
+
+    if (
+        $range === null
+    ) {
+
+        return $startTime;
+    }
+
+
+    foreach (
+        $range["ranges"] as $timeRange
+    ) {
+
+        $candidate =
+            max(
+                $startTime,
+                $timeRange["start"]
+            );
+
+
+        if (
+            $candidate
+            +
+            $visitDuration
+            <=
+            $timeRange["end"]
+        ) {
+
+            return $candidate;
+        }
+    }
+
+
+    return -1;
+}
+
+
+/* =====================================================
+   CHECK LUNCH CONFLICT
+   ===================================================== */
+
+function itineraryHasLunchConflict(
+    $startTime,
+    $endTime,
+    $lunchStart,
+    $lunchEnd
+) {
+
+    if (
+        $endTime <= $lunchStart
+    ) {
+
+        return false;
+    }
+
+
+    if (
+        $startTime >= $lunchEnd
+    ) {
+
+        return false;
+    }
+
+
+    return true;
+}
+
+
+/* =====================================================
+   CREATE LUNCH BREAK
+   ===================================================== */
+
+function createLunchBreak(
+    $latitude,
+    $longitude,
+    $startTime,
+    $endTime
+) {
+
+    return [
+
+        "name" =>
+            "Lunch Break",
+
+        "category" =>
+            "Food",
+
+        "latitude" =>
+            $latitude,
+
+        "longitude" =>
+            $longitude,
+
+        "recommendation_score" =>
+            0,
+
+        "opening_hours" =>
+            "",
+
+        "distance_km" =>
+            0,
+
+        "travel_minutes" =>
+            0,
+
+        "visit_minutes" =>
+            $endTime - $startTime,
+
+        "start_time" =>
+            formatItineraryTime(
+                $startTime
+            ),
+
+        "end_time" =>
+            formatItineraryTime(
+                $endTime
+            ),
+
+        "is_break" =>
+            true
+    ];
+}
+
+
+/* =====================================================
+   PLACE COORDINATE VALIDATION
+   ===================================================== */
+
+function itineraryValidCoordinates(
+    $place
+) {
+
+    if (
+        !is_array($place)
+    ) {
+
+        return false;
+    }
+
+
+    $latitude =
+        (float)(
+            $place["latitude"]
+            ?? 0
+        );
+
+    $longitude =
+        (float)(
+            $place["longitude"]
+            ?? 0
+        );
+
+
+    if (
+        $latitude == 0 &&
+        $longitude == 0
+    ) {
+
+        return false;
+    }
+
+
+    if (
+        $latitude < -90 ||
+        $latitude > 90
+    ) {
+
+        return false;
+    }
+
+
+    if (
+        $longitude < -180 ||
+        $longitude > 180
+    ) {
+
+        return false;
+    }
+
+
+    return true;
+}
+
+
+/* =====================================================
+   PLACE QUALITY SCORE
+   ===================================================== */
+
+function itineraryPlaceQualityScore(
+    $place
+) {
+
+    $score = 0;
+
+
+    if (
+        !empty(
+            $place["recommendation_score"]
+        )
+    ) {
+
+        $score +=
+            (float)(
+                $place[
+                    "recommendation_score"
+                ]
+            )
+            *
+            0.10;
+    }
+
+
+    if (
+        !empty(
+            $place["description"]
+        )
+    ) {
+
+        $score += 3;
+    }
+
+
+    if (
+        !empty(
+            $place["opening_hours"]
+        )
+    ) {
+
+        $score += 3;
+    }
+
+
+    if (
+        itineraryValidCoordinates(
+            $place
+        )
+    ) {
+
+        $score += 5;
+    }
+
+
+    return $score;
+}
+
+
+/* =====================================================
+   FIND BEST NEXT PLACE
+   ===================================================== */
+
+function findBestNextPlace(
+    $places,
+    $currentLatitude,
+    $currentLongitude,
+    $currentTime,
+    $dayEndLimit,
+    $transport,
+    $placesToday,
+    $targetPlaces,
+    $lunchStart,
+    $lunchEnd
+) {
+
+    $bestIndex = null;
+
+    $bestScore =
+        -PHP_FLOAT_MAX;
+
+    $bestDistance = 0;
+
+    $bestTravelMinutes = 0;
+
+    $bestStartTime = 0;
+
+    $bestEndTime = 0;
+
+    $bestVisitDuration = 0;
 
 
     foreach (
         $places as $index => $place
     ) {
 
-        $placeLatitude =
-            (float)(
-                $place["latitude"] ?? 0
-            );
+        if (
+            !itineraryValidCoordinates(
+                $place
+            )
+        ) {
 
-        $placeLongitude =
-            (float)(
-                $place["longitude"] ?? 0
-            );
+            continue;
+        }
+
+
+        $latitude =
+            (float)$place["latitude"];
+
+        $longitude =
+            (float)$place["longitude"];
 
 
         $distance =
             calculateDistance(
                 $currentLatitude,
                 $currentLongitude,
-                $placeLatitude,
-                $placeLongitude
+                $latitude,
+                $longitude
+            );
+
+
+        $travelMinutes =
+            estimateTravelMinutes(
+                $distance,
+                $transport
+            );
+
+
+        $visitDuration =
+            estimateVisitDuration(
+                $place
+            );
+
+
+        $startTime =
+            $currentTime
+            +
+            $travelMinutes;
+
+
+        /*
+         * Respect opening hours.
+         */
+
+        $openingStart =
+            findValidOpeningStart(
+                $startTime,
+                $visitDuration,
+                $place["opening_hours"] ?? ""
             );
 
 
         if (
-            $distance < $shortestDistance
+            $openingStart < 0
         ) {
 
-            $shortestDistance =
-                $distance;
-
-            $nearestIndex =
-                $index;
-
+            continue;
         }
 
+
+        $startTime =
+            $openingStart;
+
+
+        $endTime =
+            $startTime
+            +
+            $visitDuration;
+
+
+        /*
+         * Do not exceed the daily travel limit.
+         */
+
+        if (
+            $endTime > $dayEndLimit
+        ) {
+
+            continue;
+        }
+
+
+        /*
+         * Do not place sightseeing across lunch.
+         */
+
+        if (
+            !$placesToday == 0
+        ) {
+
+            if (
+                itineraryHasLunchConflict(
+                    $startTime,
+                    $endTime,
+                    $lunchStart,
+                    $lunchEnd
+                )
+            ) {
+
+                continue;
+            }
+        }
+
+
+        /*
+         * Recommendation score.
+         */
+
+        $recommendationScore =
+            (float)(
+                $place[
+                    "recommendation_score"
+                ]
+                ??
+                0
+            );
+
+
+        /*
+         * Distance preference.
+         *
+         * Nearby attractions are preferred.
+         */
+
+        $distancePenalty =
+            min(
+                30,
+                $distance * 1.4
+            );
+
+
+        /*
+         * Travel penalty.
+         */
+
+        $travelPenalty =
+            min(
+                15,
+                $travelMinutes * 0.15
+            );
+
+
+        /*
+         * Opening hours quality bonus.
+         */
+
+        $openingBonus =
+            !empty(
+                $place["opening_hours"]
+            )
+            ? 4
+            : 0;
+
+
+        /*
+         * Place quality.
+         */
+
+        $qualityBonus =
+            itineraryPlaceQualityScore(
+                $place
+            );
+
+
+        /*
+         * Distribution bonus.
+         */
+
+        $distributionBonus = 0;
+
+        if (
+            $placesToday <
+            $targetPlaces
+        ) {
+
+            $distributionBonus = 8;
+        }
+
+
+        /*
+         * Prefer reasonable duration.
+         */
+
+        $durationBonus = 0;
+
+        if (
+            $visitDuration >= 60 &&
+            $visitDuration <= 180
+        ) {
+
+            $durationBonus = 3;
+        }
+
+
+        /*
+         * Final score.
+         */
+
+        $selectionScore =
+            $recommendationScore
+            +
+            $qualityBonus
+            +
+            $openingBonus
+            +
+            $distributionBonus
+            +
+            $durationBonus
+            -
+            $distancePenalty
+            -
+            $travelPenalty;
+
+
+        /*
+         * Small preference for places closer to the
+         * current position.
+         */
+
+        $selectionScore -=
+            min(
+                10,
+                $distance * 0.5
+            );
+
+
+        if (
+            $selectionScore >
+            $bestScore
+        ) {
+
+            $bestScore =
+                $selectionScore;
+
+            $bestIndex =
+                $index;
+
+            $bestDistance =
+                $distance;
+
+            $bestTravelMinutes =
+                $travelMinutes;
+
+            $bestStartTime =
+                $startTime;
+
+            $bestEndTime =
+                $endTime;
+
+            $bestVisitDuration =
+                $visitDuration;
+        }
     }
 
 
     return [
 
-        "index" => $nearestIndex,
+        "index" =>
+            $bestIndex,
 
-        "distance" => $shortestDistance
+        "distance" =>
+            $bestDistance,
 
+        "travel_minutes" =>
+            $bestTravelMinutes,
+
+        "start_time" =>
+            $bestStartTime,
+
+        "end_time" =>
+            $bestEndTime,
+
+        "visit_minutes" =>
+            $bestVisitDuration
     ];
-
 }
 
 
@@ -334,399 +1053,394 @@ function generateItinerary(
     $numberOfDays,
     $transport,
     $startLatitude,
-    $startLongitude
+    $startLongitude,
+    $accommodationLatitude = null,
+    $accommodationLongitude = null
 ) {
 
     $numberOfDays =
-        max(
-            1,
-            (int)$numberOfDays
-        );
+        max(1, (int)$numberOfDays);
 
-
-    if (
-        empty($places)
-        ||
-        !is_array($places)
-    ) {
-
+    if (empty($places) || !is_array($places)) {
         return [];
-
     }
 
+    $remainingPlaces = [];
 
-    /*
-       Keep all recommended places.
+    foreach ($places as $place) {
+        if (itineraryValidCoordinates($place)) {
+            $remainingPlaces[] = $place;
+        }
+    }
 
-       Do NOT limit to:
-       numberOfDays × 3
-    */
+    if (empty($remainingPlaces)) {
+        return [];
+    }
 
-    $remainingPlaces =
-        array_values($places);
+    $transport = trim((string)$transport);
 
+    if ($transport === '') {
+        $transport = 'car';
+    }
+
+    $useAccommodation =
+        $accommodationLatitude !== null &&
+        $accommodationLongitude !== null &&
+        (float)$accommodationLatitude != 0 &&
+        (float)$accommodationLongitude != 0;
+
+    if ($useAccommodation) {
+        $baseLatitude = (float)$accommodationLatitude;
+        $baseLongitude = (float)$accommodationLongitude;
+    } else {
+        $baseLatitude = (float)$startLatitude;
+        $baseLongitude = (float)$startLongitude;
+    }
+
+    $dayStartTime = 9 * 60;
+    $dayEndLimit = 20 * 60;
+    $lunchStart = 13 * 60;
+    $lunchEnd = 14 * 60;
+    $maximumPlacesPerDay = 4;
 
     $itinerary = [];
 
-
     /*
-       Day starts at 9:00 AM.
-    */
-
-    $dayStartTime =
-        9 * 60;
-
-
-    /*
-       Maximum end time = 8:00 PM.
-    */
-
-    $dayEndLimit =
-        20 * 60;
-
-
-    /* =================================================
-       CREATE EACH DAY
-       ================================================= */
-
-    for (
-        $day = 1;
-        $day <= $numberOfDays;
-        $day++
-    ) {
-
+     * We first divide the available recommendations between the days.
+     * The target is recalculated every day so a two-day trip with eight
+     * recommendations naturally aims for four places on each day,
+     * while smaller or longer trips remain balanced.
+     */
+    for ($day = 1; $day <= $numberOfDays; $day++) {
 
         $daySchedule = [];
-
-
-        $currentTime =
-            $dayStartTime;
-
-
-        /*
-           Start each day from destination area.
-        */
-
-        $currentLatitude =
-            (float)$startLatitude;
-
-
-        $currentLongitude =
-            (float)$startLongitude;
-
-
-        /*
-           Number of days still available,
-           including today.
-        */
+        $currentLatitude = $baseLatitude;
+        $currentLongitude = $baseLongitude;
+        $currentTime = $dayStartTime;
+        $placesToday = 0;
+        $lunchAdded = false;
 
         $daysRemaining =
             $numberOfDays - $day + 1;
 
+        $remainingCount = count($remainingPlaces);
 
-        /*
-           If no places remain, still create
-           an empty day.
-        */
-
-        if (empty($remainingPlaces)) {
-
+        if ($remainingCount <= 0) {
             $itinerary[] = [
-
-                "day" => $day,
-
-                "places" => []
-
+                'day' => $day,
+                'places' => []
             ];
-
             continue;
-
         }
-
-
-        /*
-           Calculate approximately how many places
-           should be reserved for each remaining day.
-
-           This prevents Day 1 from taking all places.
-        */
 
         $targetPlacesForToday =
             (int)ceil(
-                count($remainingPlaces)
-                /
-                $daysRemaining
+                $remainingCount / $daysRemaining
             );
 
+        $targetPlacesForToday =
+            min(
+                $maximumPlacesPerDay,
+                max(1, $targetPlacesForToday)
+            );
 
-        $placesToday = 0;
-
-
-        /* =============================================
-           ADD PLACES WHILE TIME IS AVAILABLE
-           ============================================= */
-
-        while (
-            !empty($remainingPlaces)
-        ) {
-
-
-            /*
-               Find nearest available place.
-            */
-
-            $nearestResult =
-                findNearestPlaceIndex(
-                    $remainingPlaces,
-                    $currentLatitude,
-                    $currentLongitude
-                );
-
-
-            $nearestIndex =
-                $nearestResult["index"];
-
-
-            $distance =
-                $nearestResult["distance"];
-
+        /*
+         * Keep selecting the best geographically sensible attraction
+         * that can actually fit into the current day's time window.
+         */
+        while (!empty($remainingPlaces)) {
 
             if (
-                $nearestIndex === null
+                !$lunchAdded &&
+                $currentTime >= $lunchStart &&
+                $currentTime < $lunchEnd
             ) {
+                $daySchedule[] = createLunchBreak(
+                    $currentLatitude,
+                    $currentLongitude,
+                    $lunchStart,
+                    $lunchEnd
+                );
 
-                break;
-
+                $currentTime = $lunchEnd;
+                $lunchAdded = true;
+                continue;
             }
 
+            $bestIndex = null;
+            $bestData = null;
+            $bestScore = -INF;
 
-            $place =
-                $remainingPlaces[
-                    $nearestIndex
-                ];
+            foreach ($remainingPlaces as $index => $place) {
 
+                $distance = calculateDistance(
+                    $currentLatitude,
+                    $currentLongitude,
+                    (float)$place['latitude'],
+                    (float)$place['longitude']
+                );
 
-            /*
-               Calculate travel time.
-            */
-
-            $estimatedTravelMinutes =
-                estimateTravelMinutes(
+                $travelMinutes = estimateTravelMinutes(
                     $distance,
                     $transport
                 );
 
+                $visitMinutes = estimateVisitDuration($place);
 
-            /*
-               No travel time before first place
-               in the displayed schedule.
-            */
-
-            $actualTravelMinutes = 0;
-
-
-            if ($placesToday > 0) {
-
-                $actualTravelMinutes =
-                    $estimatedTravelMinutes;
-
-            }
-
-
-            /*
-               Estimate visit duration.
-            */
-
-            $visitDuration =
-                estimateVisitDuration($place);
-
-
-            /*
-               Calculate schedule.
-            */
-
-            $startTime =
-                $currentTime
-                +
-                $actualTravelMinutes;
-
-
-            $endTime =
-                $startTime
-                +
-                $visitDuration;
-
-
-            /*
-               Do not schedule anything after 8 PM.
-            */
-
-            if (
-                $endTime > $dayEndLimit
-            ) {
+                $candidateStart =
+                    $currentTime + $travelMinutes;
 
                 /*
-                   Stop this day's schedule.
+                 * If the trip to the next place crosses lunch, pause at
+                 * lunch first and then calculate the attraction again.
+                 */
+                if (
+                    !$lunchAdded &&
+                    $candidateStart < $lunchStart &&
+                    $candidateStart + $visitMinutes > $lunchStart
+                ) {
+                    $candidateStart = $lunchEnd;
+                }
 
-                   Remaining places will be used
-                   on the next day.
-                */
+                if (
+                    !$lunchAdded &&
+                    $candidateStart >= $lunchStart &&
+                    $candidateStart < $lunchEnd
+                ) {
+                    $candidateStart = $lunchEnd;
+                }
 
-                break;
+                $openingHours =
+                    $place['opening_hours'] ?? '';
 
+                $validStart = findValidOpeningStart(
+                    $candidateStart,
+                    $visitMinutes,
+                    $openingHours
+                );
+
+                if ($validStart < 0) {
+                    continue;
+                }
+
+                /* If the attraction starts after lunch, lunch must exist. */
+                if (
+                    !$lunchAdded &&
+                    $validStart >= $lunchEnd
+                ) {
+                    $validStart = max(
+                        $validStart,
+                        $lunchEnd
+                    );
+                }
+
+                $validEnd =
+                    $validStart + $visitMinutes;
+
+                if ($validEnd > $dayEndLimit) {
+                    continue;
+                }
+
+                if (
+                    !$lunchAdded &&
+                    $validStart < $lunchEnd &&
+                    $validEnd > $lunchStart
+                ) {
+                    continue;
+                }
+
+                /*
+                 * Geographic route score:
+                 * - prefer short travel now
+                 * - prefer highly recommended places
+                 * - if this is the last attraction of the day, prefer
+                 *   places nearer the accommodation/base for the return
+                 *   journey.
+                 */
+                $recommendationScore =
+                    (float)(
+                        $place['recommendation_score'] ?? 0
+                    );
+
+                $returnDistance = calculateDistance(
+                    (float)$place['latitude'],
+                    (float)$place['longitude'],
+                    $baseLatitude,
+                    $baseLongitude
+                );
+
+                $futureSlots =
+                    $targetPlacesForToday - $placesToday - 1;
+
+                $routePenalty =
+                    $futureSlots <= 0
+                    ? ($returnDistance * 5)
+                    : ($returnDistance * 0.5);
+
+                $score =
+                    ($recommendationScore * 3) -
+                    ($distance * 2) -
+                    $routePenalty -
+                    ($validStart - $currentTime) * 0.08;
+
+                /*
+                 * Before the daily target is reached, favour places that
+                 * can be visited earlier rather than leaving empty time.
+                 */
+                if ($placesToday < $targetPlacesForToday) {
+                    $score += 15;
+                }
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestIndex = $index;
+                    $bestData = [
+                        'distance' => $distance,
+                        'travel_minutes' => $travelMinutes,
+                        'start_time' => $validStart,
+                        'end_time' => $validEnd,
+                        'visit_minutes' => $visitMinutes
+                    ];
+                }
             }
 
-
-            /* =========================================
-               ADD PLACE
-               ========================================= */
-
-            $daySchedule[] = [
-
-                "name" =>
-                    $place["name"]
-                    ?? "Unnamed Place",
-
-                "category" =>
-                    $place["category"]
-                    ?? "Tourist Attraction",
-
-                "latitude" =>
-                    $place["latitude"]
-                    ?? 0,
-
-                "longitude" =>
-                    $place["longitude"]
-                    ?? 0,
-
-                "recommendation_score" =>
-                    $place[
-                        "recommendation_score"
-                    ]
-                    ?? 0,
-
-                "opening_hours" =>
-                    $place[
-                        "opening_hours"
-                    ]
-                    ?? "",
-
-                "distance_km" =>
-                    round(
-                        $distance,
-                        2
-                    ),
-
-                "travel_minutes" =>
-                    $actualTravelMinutes,
-
-                "visit_minutes" =>
-                    $visitDuration,
-
-                "start_time" =>
-                    formatItineraryTime(
-                        $startTime
-                    ),
-
-                "end_time" =>
-                    formatItineraryTime(
-                        $endTime
-                    )
-
-            ];
-
+            if ($bestIndex === null || $bestData === null) {
+                break;
+            }
 
             /*
-               Remove successfully scheduled place.
-            */
+             * If the chosen attraction begins after the lunch break,
+             * insert lunch before adding it.
+             */
+            if (
+                !$lunchAdded &&
+                $bestData['start_time'] >= $lunchEnd
+            ) {
+                $daySchedule[] = createLunchBreak(
+                    $currentLatitude,
+                    $currentLongitude,
+                    $lunchStart,
+                    $lunchEnd
+                );
+
+                $currentTime = $lunchEnd;
+                $lunchAdded = true;
+
+                /* Re-evaluate from the new position/time. */
+                continue;
+            }
+
+            $place = $remainingPlaces[$bestIndex];
+
+            $schedulePlace = [
+                'name' => $place['name'] ?? 'Unnamed Place',
+                'category' => $place['category'] ?? 'Tourist Attraction',
+                'latitude' => $place['latitude'] ?? 0,
+                'longitude' => $place['longitude'] ?? 0,
+                'recommendation_score' =>
+                    $place['recommendation_score'] ?? 0,
+                'opening_hours' =>
+                    $place['opening_hours'] ?? '',
+                'distance_km' =>
+                    round($bestData['distance'], 2),
+                'travel_minutes' =>
+                    $bestData['travel_minutes'],
+                'visit_minutes' =>
+                    $bestData['visit_minutes'],
+                'start_time' =>
+                    formatItineraryTime(
+                        $bestData['start_time']
+                    ),
+                'end_time' =>
+                    formatItineraryTime(
+                        $bestData['end_time']
+                    ),
+                'is_break' => false
+            ];
+
+            $daySchedule[] = $schedulePlace;
 
             array_splice(
                 $remainingPlaces,
-                $nearestIndex,
+                $bestIndex,
                 1
             );
 
-
-            /*
-               Update current location.
-            */
-
             $currentLatitude =
-                (float)(
-                    $place["latitude"] ?? 0
-                );
-
+                (float)$place['latitude'];
 
             $currentLongitude =
-                (float)(
-                    $place["longitude"] ?? 0
-                );
-
-
-            /*
-               Update current time.
-            */
+                (float)$place['longitude'];
 
             $currentTime =
-                $endTime;
-
+                $bestData['end_time'];
 
             $placesToday++;
 
-
-            /*
-               ------------------------------------------------
-               BALANCED DISTRIBUTION
-               ------------------------------------------------
-
-               Once today's approximate target is reached,
-               check whether enough places remain for future
-               days. If yes, stop this day and preserve them.
-
-               This prevents Day 1 from using all places while
-               still allowing more than 3 places per day.
-            */
-
-            $placesLeft =
-                count($remainingPlaces);
-
-
-            $futureDays =
-                $numberOfDays - $day;
-
-
             if (
-                $futureDays > 0
-                &&
-                $placesToday >= $targetPlacesForToday
-                &&
-                $placesLeft >= $futureDays
+                !$lunchAdded &&
+                $currentTime >= $lunchStart &&
+                $currentTime < $lunchEnd
             ) {
+                $daySchedule[] = createLunchBreak(
+                    $currentLatitude,
+                    $currentLongitude,
+                    $lunchStart,
+                    $lunchEnd
+                );
 
-                break;
-
+                $currentTime = $lunchEnd;
+                $lunchAdded = true;
             }
 
+            /*
+             * Once the balanced target is reached, leave enough places
+             * for the remaining days whenever possible.
+             */
+            $placesLeft = count($remainingPlaces);
+            $futureDays = $numberOfDays - $day;
+
+            if (
+                $placesToday >= $targetPlacesForToday &&
+                $futureDays > 0 &&
+                $placesLeft >= $futureDays
+            ) {
+                break;
+            }
+
+            if ($placesToday >= $maximumPlacesPerDay) {
+                break;
+            }
+
+            if ($currentTime >= $dayEndLimit) {
+                break;
+            }
         }
 
-
         /*
-           Add day to final itinerary.
-        */
+         * Add lunch to a sightseeing day even if the last attraction
+         * ended before 13:00. This keeps the visible itinerary complete.
+         */
+        if (
+            !$lunchAdded &&
+            $placesToday > 0 &&
+            $lunchStart < $dayEndLimit
+        ) {
+            $daySchedule[] = createLunchBreak(
+                $currentLatitude,
+                $currentLongitude,
+                $lunchStart,
+                $lunchEnd
+            );
+        }
 
         $itinerary[] = [
-
-            "day" => $day,
-
-            "places" => $daySchedule
-
+            'day' => $day,
+            'places' => $daySchedule
         ];
-
     }
 
-
     return $itinerary;
-
 }
 
 ?>

@@ -1,4 +1,7 @@
 <?php
+/* =====================================================
+   WANDERAI - DYNAMIC AI ITINERARY PAGE
+   ===================================================== */
 
 session_start();
 
@@ -12,8 +15,8 @@ require_once "places.php";
 require_once "recommend_places.php";
 require_once "generate_itinerary.php";
 
-$username = htmlspecialchars($_SESSION["username"]);
-$user_id = (int) $_SESSION["user_id"];
+$username = htmlspecialchars($_SESSION["username"] ?? "User");
+$user_id = (int)$_SESSION["user_id"];
 
 
 /* =====================================================
@@ -25,17 +28,28 @@ if (!isset($_GET["trip_id"])) {
     exit();
 }
 
-$trip_id = (int) $_GET["trip_id"];
+$trip_id = (int)$_GET["trip_id"];
+
+if ($trip_id <= 0) {
+    header("Location: dashboard.php");
+    exit();
+}
 
 
 /* =====================================================
-   GET TRIP DETAILS
+   GET TRIP
    ===================================================== */
 
 $stmt = $conn->prepare(
-    "SELECT * FROM trips
-     WHERE trip_id = ? AND user_id = ?"
+    "SELECT *
+     FROM trips
+     WHERE trip_id = ?
+     AND user_id = ?"
 );
+
+if (!$stmt) {
+    die("Database error: " . $conn->error);
+}
 
 $stmt->bind_param(
     "ii",
@@ -48,7 +62,6 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows !== 1) {
-
     $stmt->close();
 
     header("Location: dashboard.php");
@@ -61,33 +74,32 @@ $stmt->close();
 
 
 /* =====================================================
-   FORMAT TRIP DATA
+   TRIP DATA
    ===================================================== */
 
-$destination = htmlspecialchars(
-    $trip["destination"] ?? ""
-);
+$destinationRaw = $trip["destination"] ?? "";
 
-$start_date = !empty($trip["start_date"])
-    ? date(
-        "d M Y",
-        strtotime($trip["start_date"])
-    )
+$destination = htmlspecialchars($destinationRaw);
+
+$startDateRaw = $trip["start_date"] ?? "";
+
+$start_date = !empty($startDateRaw)
+    ? date("d M Y", strtotime($startDateRaw))
     : "";
 
 $number_of_days = max(
     1,
-    (int) ($trip["number_of_days"] ?? 1)
+    (int)($trip["number_of_days"] ?? 1)
 );
 
 $budget = number_format(
-    (float) ($trip["budget"] ?? 0),
+    (float)($trip["budget"] ?? 0),
     2
 );
 
 $travelers = max(
     1,
-    (int) ($trip["travelers"] ?? 1)
+    (int)($trip["travelers"] ?? 1)
 );
 
 $interests = htmlspecialchars(
@@ -98,124 +110,1054 @@ $transport = htmlspecialchars(
     $trip["transport_preference"] ?? ""
 );
 
-$latitude = (float) (
-    $trip["latitude"] ?? 0
-);
+$latitude = (float)($trip["latitude"] ?? 0);
 
-$longitude = (float) (
-    $trip["longitude"] ?? 0
-);
+$longitude = (float)($trip["longitude"] ?? 0);
 
 
 /* =====================================================
-   REGENERATE ITINERARY
+   REGENERATION
    ===================================================== */
 
-$regenerate = isset($_GET["regenerate"])
-    && $_GET["regenerate"] == "1";
+$regenerate =
+    isset($_GET["regenerate"]) &&
+    $_GET["regenerate"] == "1";
 
 
 /* =====================================================
-   FETCH PLACES
+   VARIABLES
    ===================================================== */
-
-$placesResult = getNearbyPlaces(
-    $latitude,
-    $longitude,
-    10000
-);
 
 $allPlaces = [];
-$placesMessage = "";
-
-if (
-    isset($placesResult["success"]) &&
-    $placesResult["success"] === true
-) {
-
-    $allPlaces = $placesResult["places"] ?? [];
-
-} else {
-
-    $placesMessage =
-        $placesResult["message"]
-        ?? "Unable to fetch places at the moment.";
-}
-
-
-/* =====================================================
-   RECOMMEND PLACES
-   ===================================================== */
 
 $recommendedPlaces = [];
 
-if (!empty($allPlaces)) {
-
-    $recommendedPlaces = recommendPlaces(
-        $allPlaces,
-        $trip["interests"] ?? "",
-        $number_of_days
-    );
-}
-
-
-/* =====================================================
-   SELECT ONE ACCOMMODATION
-   ===================================================== */
-
-$selectedAccommodation = null;
-
-foreach ($allPlaces as $place) {
-
-    if (
-        isset($place["category"]) &&
-        strtolower(
-            trim($place["category"])
-        ) === "accommodation"
-    ) {
-
-        $selectedAccommodation = $place;
-        break;
-    }
-}
-
-
-/* =====================================================
-   REMOVE ACCOMMODATION FROM DAILY ITINERARY
-   ===================================================== */
-
 $itineraryPlaces = [];
-
-foreach ($recommendedPlaces as $place) {
-
-    if (
-        !isset($place["category"]) ||
-        strtolower(
-            trim($place["category"])
-        ) !== "accommodation"
-    ) {
-
-        $itineraryPlaces[] = $place;
-    }
-}
-
-
-/* =====================================================
-   GENERATE DAY-WISE ITINERARY
-   ===================================================== */
 
 $generatedItinerary = [];
 
-if (!empty($itineraryPlaces)) {
+$selectedAccommodation = null;
 
-    $generatedItinerary = generateItinerary(
-        $itineraryPlaces,
-        $number_of_days,
-        $trip["transport_preference"] ?? "",
-        $latitude,
-        $longitude
+$placesMessage = "";
+
+$placesDiscoveredCount = 0;
+
+$savedPlacesCount = 0;
+
+
+/* =====================================================
+   LOAD SAVED ITINERARY
+   ===================================================== */
+
+$savedItinerary = [];
+
+if (!empty($trip["generated_itinerary"])) {
+
+    $decoded = json_decode(
+        $trip["generated_itinerary"],
+        true
+    );
+
+    if (
+        is_array($decoded) &&
+        !empty($decoded)
+    ) {
+        $savedItinerary = $decoded;
+    }
+}
+
+
+/* =====================================================
+   GET SAVED ACCOMMODATION
+   ===================================================== */
+
+$savedAccommodation = null;
+
+if (
+    isset($savedItinerary["_accommodation"]) &&
+    is_array($savedItinerary["_accommodation"])
+) {
+
+    $savedAccommodation =
+        $savedItinerary["_accommodation"];
+
+    unset(
+        $savedItinerary["_accommodation"]
     );
 }
+
+
+/* =====================================================
+   GET SAVED RECOMMENDED PLACES
+   ===================================================== */
+
+$savedPlaces = [];
+
+if (
+    isset($savedItinerary["_recommended_places"]) &&
+    is_array($savedItinerary["_recommended_places"])
+) {
+
+    $savedPlaces =
+        $savedItinerary["_recommended_places"];
+
+    unset(
+        $savedItinerary["_recommended_places"]
+    );
+}
+
+
+/* =====================================================
+   GET SAVED DISCOVERED PLACE COUNT
+   ===================================================== */
+
+if (
+    isset($savedItinerary["_places_count"])
+) {
+
+    $savedPlacesCount =
+        (int)$savedItinerary["_places_count"];
+
+    unset(
+        $savedItinerary["_places_count"]
+    );
+}
+
+
+/* =====================================================
+   ACCOMMODATION DETECTOR
+   ===================================================== */
+
+function isAccommodationPlace($place)
+{
+    if (!is_array($place)) {
+        return false;
+    }
+
+    $name = strtolower(
+        trim($place["name"] ?? "")
+    );
+
+    $category = strtolower(
+        trim($place["category"] ?? "")
+    );
+
+    $accommodationWords = [
+        "accommodation",
+        "hotel",
+        "hostel",
+        "guest house",
+        "guest_house",
+        "guesthouse",
+        "resort",
+        "motel",
+        "apartment",
+        "chalet",
+        "camp site",
+        "camp_site",
+        "alpine hut",
+        "homestay",
+        "homestay"
+    ];
+
+    foreach ($accommodationWords as $word) {
+
+        if (
+            strpos($category, $word) !== false ||
+            strpos($name, $word) !== false
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+/* =====================================================
+   DISPLAY CATEGORY DETECTOR
+   =====================================================
+
+   The API may return a wrong generic category.
+
+   Example:
+   Chimmini Wildlife Sanctuary
+   may come as "Entertainment".
+
+   This function uses the actual place name to provide
+   a more meaningful category on the itinerary page.
+   ===================================================== */
+
+function getDisplayCategory($place)
+{
+    if (!is_array($place)) {
+        return "Tourist Attraction";
+    }
+
+    $name = strtolower(
+        trim($place["name"] ?? "")
+    );
+
+    $category = strtolower(
+        trim($place["category"] ?? "")
+    );
+
+
+    /* Waterfalls */
+
+    if (
+        strpos($name, "waterfall") !== false ||
+        strpos($name, "waterfalls") !== false ||
+        strpos($name, "falls") !== false ||
+        strpos($category, "waterfall") !== false
+    ) {
+        return "Nature & Scenic";
+    }
+
+
+    /* Wildlife / Sanctuary */
+
+    if (
+        strpos($name, "wildlife") !== false ||
+        strpos($name, "sanctuary") !== false ||
+        strpos($name, "national park") !== false ||
+        strpos($name, "wildlife park") !== false ||
+        strpos($category, "wildlife") !== false
+    ) {
+        return "Nature & Scenic";
+    }
+
+
+    /* Beaches */
+
+    if (
+        strpos($name, "beach") !== false ||
+        strpos($name, "coast") !== false ||
+        strpos($category, "beach") !== false
+    ) {
+        return "Beaches";
+    }
+
+
+    /* Historical / Cultural */
+
+    if (
+        strpos($name, "fort") !== false ||
+        strpos($name, "palace") !== false ||
+        strpos($name, "museum") !== false ||
+        strpos($name, "monument") !== false ||
+        strpos($name, "heritage") !== false ||
+        strpos($name, "archaeological") !== false ||
+        strpos($category, "historical") !== false ||
+        strpos($category, "historic") !== false ||
+        strpos($category, "cultural") !== false ||
+        strpos($category, "heritage") !== false
+    ) {
+        return "Historical & Cultural";
+    }
+
+
+    /* Religious */
+
+    if (
+        strpos($name, "temple") !== false ||
+        strpos($name, "church") !== false ||
+        strpos($name, "mosque") !== false ||
+        strpos($name, "chapel") !== false ||
+        strpos($name, "shrine") !== false ||
+        strpos($name, "gurudwara") !== false ||
+        strpos($name, "monastery") !== false ||
+        strpos($category, "religious") !== false
+    ) {
+        return "Religious";
+    }
+
+
+    /* Entertainment */
+
+    if (
+        strpos($name, "water park") !== false ||
+        strpos($name, "amusement") !== false ||
+        strpos($name, "theme park") !== false ||
+        strpos($name, "aquarium") !== false ||
+        strpos($name, "zoo") !== false ||
+        strpos($name, "cinema") !== false ||
+        strpos($name, "theatre") !== false ||
+        strpos($name, "theater") !== false
+    ) {
+        return "Entertainment";
+    }
+
+
+    /* Nature / Scenic */
+
+    if (
+        strpos($name, "lake") !== false ||
+        strpos($name, "river") !== false ||
+        strpos($name, "hill") !== false ||
+        strpos($name, "mountain") !== false ||
+        strpos($name, "peak") !== false ||
+        strpos($name, "valley") !== false ||
+        strpos($name, "viewpoint") !== false ||
+        strpos($name, "view point") !== false ||
+        strpos($name, "forest") !== false ||
+        strpos($name, "garden") !== false ||
+        strpos($category, "nature") !== false ||
+        strpos($category, "scenic") !== false
+    ) {
+        return "Nature & Scenic";
+    }
+
+
+    /* Parks */
+
+    if (
+        strpos($category, "park") !== false ||
+        strpos($name, "park") !== false ||
+        strpos($category, "garden") !== false
+    ) {
+        return "Parks";
+    }
+
+
+    /* Keep useful API category if available */
+
+    if ($category !== "") {
+
+        return ucwords(
+            str_replace(
+                "_",
+                " ",
+                $category
+            )
+        );
+    }
+
+
+    return "Tourist Attraction";
+}
+
+
+/* =====================================================
+   FINAL ITINERARY DUPLICATE CLEANUP
+   ===================================================== */
+
+function wanderItineraryNormaliseName($name)
+{
+    $name = strtolower(trim((string)$name));
+
+    $name = preg_replace(
+        '/[^a-z0-9\\s]/i',
+        ' ',
+        $name
+    );
+
+    $name = preg_replace(
+        '/\\s+/',
+        ' ',
+        $name
+    );
+
+    return trim($name);
+}
+
+
+function wanderItineraryCoordinates($place)
+{
+    $lat = (float)(
+        $place["latitude"]
+        ?? $place["lat"]
+        ?? 0
+    );
+
+    $lon = (float)(
+        $place["longitude"]
+        ?? $place["lon"]
+        ?? 0
+    );
+
+    return [$lat, $lon];
+}
+
+
+function wanderItineraryDistanceKm(
+    $lat1,
+    $lon1,
+    $lat2,
+    $lon2
+) {
+    $earthRadius = 6371;
+
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+
+    $a =
+        sin($dLat / 2) * sin($dLat / 2)
+        +
+        cos(deg2rad($lat1))
+        * cos(deg2rad($lat2))
+        * sin($dLon / 2)
+        * sin($dLon / 2);
+
+    $a = min(1, max(0, $a));
+
+    return $earthRadius *
+        2 *
+        asin(sqrt($a));
+}
+
+
+function wanderItineraryIsDuplicate(
+    $candidate,
+    $existingPlaces
+) {
+    $candidateName =
+        wanderItineraryNormaliseName(
+            $candidate["name"] ?? ""
+        );
+
+    if ($candidateName === "") {
+        return true;
+    }
+
+    [$candidateLat, $candidateLon] =
+        wanderItineraryCoordinates($candidate);
+
+    foreach ($existingPlaces as $existing) {
+
+        $existingName =
+            wanderItineraryNormaliseName(
+                $existing["name"] ?? ""
+            );
+
+        if (
+            $candidateName ===
+            $existingName
+        ) {
+            return true;
+        }
+
+        if (
+            $existingName !== ""
+        ) {
+
+            similar_text(
+                $candidateName,
+                $existingName,
+                $percent
+            );
+
+            if (
+                $percent >= 88 ||
+                (
+                    strlen($candidateName) >= 18 &&
+                    strlen($existingName) >= 18 &&
+                    $percent >= 78
+                )
+            ) {
+                return true;
+            }
+        }
+
+        [$existingLat, $existingLon] =
+            wanderItineraryCoordinates($existing);
+
+        if (
+            $candidateLat == 0 ||
+            $candidateLon == 0 ||
+            $existingLat == 0 ||
+            $existingLon == 0
+        ) {
+            continue;
+        }
+
+        $distance =
+            wanderItineraryDistanceKm(
+                $candidateLat,
+                $candidateLon,
+                $existingLat,
+                $existingLon
+            );
+
+        $candidateText =
+            strtolower(
+                ($candidate["name"] ?? "")
+                . " "
+                . ($candidate["category"] ?? "")
+            );
+
+        $existingText =
+            strtolower(
+                ($existing["name"] ?? "")
+                . " "
+                . ($existing["category"] ?? "")
+            );
+
+        $candidateNatural =
+            strpos($candidateText, "waterfall") !== false ||
+            strpos($candidateText, "waterfalls") !== false ||
+            strpos($candidateText, " falls") !== false ||
+            strpos($candidateText, "nature") !== false ||
+            strpos($candidateText, "scenic") !== false;
+
+        $existingNatural =
+            strpos($existingText, "waterfall") !== false ||
+            strpos($existingText, "waterfalls") !== false ||
+            strpos($existingText, " falls") !== false ||
+            strpos($existingText, "nature") !== false ||
+            strpos($existingText, "scenic") !== false;
+
+        if (
+            $candidateNatural &&
+            $existingNatural &&
+            $distance <= 3.5
+        ) {
+            $candidateWater =
+                strpos($candidateText, "waterfall") !== false ||
+                strpos($candidateText, "waterfalls") !== false ||
+                strpos($candidateText, " falls") !== false;
+
+            $existingWater =
+                strpos($existingText, "waterfall") !== false ||
+                strpos($existingText, "waterfalls") !== false ||
+                strpos($existingText, " falls") !== false;
+
+            if (
+                $candidateWater &&
+                $existingWater
+            ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+function wanderItineraryUniquePlaces($places)
+{
+    $unique = [];
+
+    if (!is_array($places)) {
+        return [];
+    }
+
+    foreach ($places as $place) {
+
+        if (!is_array($place)) {
+            continue;
+        }
+
+        if (
+            wanderItineraryIsDuplicate(
+                $place,
+                $unique
+            )
+        ) {
+            continue;
+        }
+
+        $unique[] = $place;
+    }
+
+    return $unique;
+}
+
+
+/* =====================================================
+   GENERATE OR LOAD ITINERARY
+   ===================================================== */
+
+$needsGeneration =
+    $regenerate ||
+    empty($savedItinerary);
+
+
+/* =====================================================
+   FRESH GENERATION / REGENERATION
+   ===================================================== */
+
+if ($needsGeneration) {
+
+    /* -------------------------------------------------
+       VALIDATE COORDINATES
+       ------------------------------------------------- */
+
+    if (
+        $latitude == 0 ||
+        $longitude == 0
+    ) {
+
+        $placesMessage =
+            "Invalid destination coordinates. Please edit the trip and select the destination again.";
+
+        if (!empty($savedItinerary)) {
+
+            $generatedItinerary =
+                $savedItinerary;
+
+            $selectedAccommodation =
+                $savedAccommodation;
+
+            $itineraryPlaces =
+                $savedPlaces;
+
+            $placesDiscoveredCount =
+                $savedPlacesCount;
+        }
+
+    } else {
+
+        /* -------------------------------------------------
+           FETCH DYNAMIC PLACES
+           ------------------------------------------------- */
+
+        $placesResult =
+            getNearbyPlaces(
+                $latitude,
+                $longitude,
+                10000,
+                $destinationRaw
+            );
+
+
+        /* =================================================
+           API SUCCESS
+           ================================================= */
+
+        if (
+            isset($placesResult["success"]) &&
+            $placesResult["success"] === true
+        ) {
+
+            $allPlaces =
+                $placesResult["places"] ?? [];
+
+
+            /* ---------------------------------------------
+               ACTUAL DISCOVERED PLACE COUNT
+               --------------------------------------------- */
+
+            $placesDiscoveredCount =
+                count($allPlaces);
+
+
+            /* ---------------------------------------------
+               RECOMMEND PLACES
+               --------------------------------------------- */
+
+            if (!empty($allPlaces)) {
+
+                $recommendedPlaces =
+                    recommendPlaces(
+                        $allPlaces,
+                        $trip["interests"] ?? "",
+                        $number_of_days
+                    );
+
+                /*
+                 * Final hard duplicate cleanup after the
+                 * recommendation engine.
+                 */
+                $recommendedPlaces =
+                    wanderItineraryUniquePlaces(
+                        $recommendedPlaces
+                    );
+            }
+
+
+            /* ---------------------------------------------
+               FIND ACCOMMODATION
+               ---------------------------------------------
+
+               If the trip already has a saved accommodation
+               with valid coordinates, keep it. Otherwise
+               select the first dynamically discovered
+               accommodation.
+               --------------------------------------------- */
+
+            if (
+                is_array($savedAccommodation) &&
+                isset($savedAccommodation["latitude"], $savedAccommodation["longitude"]) &&
+                is_numeric($savedAccommodation["latitude"]) &&
+                is_numeric($savedAccommodation["longitude"]) &&
+                (float)$savedAccommodation["latitude"] != 0 &&
+                (float)$savedAccommodation["longitude"] != 0
+            ) {
+
+                $selectedAccommodation =
+                    $savedAccommodation;
+
+            } else {
+
+                foreach ($allPlaces as $place) {
+
+                    if (
+                        isAccommodationPlace($place)
+                    ) {
+
+                        $selectedAccommodation =
+                            $place;
+
+                        break;
+                    }
+                }
+            }
+
+
+            /* ---------------------------------------------
+               REMOVE ACCOMMODATION FROM
+               SIGHTSEEING RECOMMENDATIONS
+               --------------------------------------------- */
+
+            foreach (
+                $recommendedPlaces as $place
+            ) {
+
+                if (
+                    !isAccommodationPlace($place)
+                ) {
+
+                    $itineraryPlaces[] =
+                        $place;
+                }
+            }
+
+
+            /* ---------------------------------------------
+               REMOVE EXACT + NEAR-DUPLICATE PLACES
+               --------------------------------------------- */
+
+            $itineraryPlaces =
+                wanderItineraryUniquePlaces(
+                    $itineraryPlaces
+                );
+
+
+            /* ---------------------------------------------
+               GENERATE DAY-WISE ITINERARY
+               --------------------------------------------- */
+
+            if (!empty($itineraryPlaces)) {
+
+                /* ---------------------------------------------
+                   ACCOMMODATION COORDINATES
+                   --------------------------------------------- */
+
+                $accommodationLatitude = null;
+                $accommodationLongitude = null;
+
+                if (
+                    is_array($selectedAccommodation) &&
+                    isset(
+                        $selectedAccommodation["latitude"],
+                        $selectedAccommodation["longitude"]
+                    ) &&
+                    is_numeric($selectedAccommodation["latitude"]) &&
+                    is_numeric($selectedAccommodation["longitude"])
+                ) {
+
+                    $candidateAccommodationLatitude =
+                        (float)$selectedAccommodation["latitude"];
+
+                    $candidateAccommodationLongitude =
+                        (float)$selectedAccommodation["longitude"];
+
+                    if (
+                        $candidateAccommodationLatitude != 0 &&
+                        $candidateAccommodationLongitude != 0
+                    ) {
+
+                        $accommodationLatitude =
+                            $candidateAccommodationLatitude;
+
+                        $accommodationLongitude =
+                            $candidateAccommodationLongitude;
+                    }
+                }
+
+
+                /* ---------------------------------------------
+                   GENERATE ITINERARY
+
+                   The accommodation coordinates are passed to
+                   the generator so every day can begin from
+                   the user's selected stay instead of always
+                   beginning from the destination centroid.
+                   --------------------------------------------- */
+
+                $generatedItinerary =
+                    generateItinerary(
+                        $itineraryPlaces,
+                        $number_of_days,
+                        $trip["transport_preference"] ?? "",
+                        $latitude,
+                        $longitude,
+                        $accommodationLatitude,
+                        $accommodationLongitude
+                    );
+            }
+
+
+            /* ---------------------------------------------
+               SAVE ITINERARY
+               --------------------------------------------- */
+
+            if (!empty($generatedItinerary)) {
+
+                /* Save accommodation */
+
+                if (
+                    $selectedAccommodation !== null
+                ) {
+
+                    $generatedItinerary[
+                        "_accommodation"
+                    ] =
+                        $selectedAccommodation;
+                }
+
+
+                /* Save recommended places */
+
+                if (!empty($itineraryPlaces)) {
+
+                    $generatedItinerary[
+                        "_recommended_places"
+                    ] =
+                        $itineraryPlaces;
+                }
+
+
+                /* Save discovered count */
+
+                $generatedItinerary[
+                    "_places_count"
+                ] =
+                    $placesDiscoveredCount;
+
+
+                /* Convert to JSON */
+
+                $itineraryJson =
+                    json_encode(
+                        $generatedItinerary,
+                        JSON_UNESCAPED_UNICODE |
+                        JSON_UNESCAPED_SLASHES
+                    );
+
+
+                /* Save to database */
+
+                if ($itineraryJson !== false) {
+
+                    $saveStmt =
+                        $conn->prepare(
+                            "UPDATE trips
+                             SET generated_itinerary = ?
+                             WHERE trip_id = ?
+                             AND user_id = ?"
+                        );
+
+                    if ($saveStmt) {
+
+                        $saveStmt->bind_param(
+                            "sii",
+                            $itineraryJson,
+                            $trip_id,
+                            $user_id
+                        );
+
+                        $saveStmt->execute();
+
+                        $saveStmt->close();
+                    }
+                }
+
+
+                /* Remove metadata before displaying */
+
+                unset(
+                    $generatedItinerary[
+                        "_accommodation"
+                    ]
+                );
+
+                unset(
+                    $generatedItinerary[
+                        "_recommended_places"
+                    ]
+                );
+
+                unset(
+                    $generatedItinerary[
+                        "_places_count"
+                    ]
+                );
+            }
+
+
+        } else {
+
+            /* =================================================
+               API FAILURE
+               ================================================= */
+
+            $placesMessage =
+                $placesResult["message"]
+                ??
+                "Unable to fetch fresh places right now.";
+
+
+            /*
+             * Keep the previous itinerary.
+             */
+
+            if (!empty($savedItinerary)) {
+
+                $generatedItinerary =
+                    $savedItinerary;
+
+                $selectedAccommodation =
+                    $savedAccommodation;
+
+                $itineraryPlaces =
+                    $savedPlaces;
+
+                $placesDiscoveredCount =
+                    $savedPlacesCount;
+
+
+                $placesMessage =
+                    "Fresh place data is temporarily unavailable. Your previously saved itinerary is being displayed.";
+            }
+        }
+    }
+
+
+} else {
+
+    /* =====================================================
+       USE SAVED ITINERARY
+       ===================================================== */
+
+    $generatedItinerary =
+        $savedItinerary;
+
+    $selectedAccommodation =
+        $savedAccommodation;
+
+    $itineraryPlaces =
+        $savedPlaces;
+
+    $placesDiscoveredCount =
+        $savedPlacesCount;
+}
+
+
+/* =====================================================
+   FINAL CLEANUP OF THE PLACE LIST
+   ===================================================== */
+
+$recommendedPlaces =
+    wanderItineraryUniquePlaces(
+        $recommendedPlaces
+    );
+
+$itineraryPlaces =
+    wanderItineraryUniquePlaces(
+        $itineraryPlaces
+    );
+
+
+/* =====================================================
+   FALLBACK - EXTRACT PLACES FROM ITINERARY
+   ===================================================== */
+
+if (
+    empty($itineraryPlaces) &&
+    !empty($generatedItinerary)
+) {
+
+    foreach (
+        $generatedItinerary as $dayData
+    ) {
+
+        if (
+            !is_array($dayData) ||
+            !isset($dayData["places"]) ||
+            !is_array($dayData["places"])
+        ) {
+            continue;
+        }
+
+
+        foreach (
+            $dayData["places"] as $place
+        ) {
+
+            $alreadyExists = false;
+
+            $placeName =
+                strtolower(
+                    trim(
+                        $place["name"] ?? ""
+                    )
+                );
+
+            foreach (
+                $itineraryPlaces as $existingPlace
+            ) {
+
+                $existingName =
+                    strtolower(
+                        trim(
+                            $existingPlace["name"] ?? ""
+                        )
+                    );
+
+                if (
+                    $placeName !== "" &&
+                    $placeName === $existingName
+                ) {
+
+                    $alreadyExists = true;
+                    break;
+                }
+            }
+
+
+            if (!$alreadyExists) {
+
+                $itineraryPlaces[] =
+                    $place;
+            }
+        }
+    }
+}
+
+
+/* =====================================================
+   FALLBACK PLACE COUNT
+   ===================================================== */
+
+if (
+    $placesDiscoveredCount <= 0 &&
+    !empty($itineraryPlaces)
+) {
+
+    $placesDiscoveredCount =
+        count($itineraryPlaces);
+}
+
+
+/* =====================================================
+   PAGE TITLE
+   ===================================================== */
+
+$page_title =
+    "My Itinerary | WanderAI";
 
 ?>
 
@@ -231,7 +1173,9 @@ if (!empty($itineraryPlaces)) {
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>My Itinerary | WanderAI</title>
+    <title>
+        <?php echo $page_title; ?>
+    </title>
 
     <link
         rel="stylesheet"
@@ -243,6 +1187,10 @@ if (!empty($itineraryPlaces)) {
 
 <body class="dashboard-body">
 
+
+<!-- =================================================
+     NAVIGATION
+     ================================================= -->
 
 <header class="dashboard-navbar">
 
@@ -272,7 +1220,10 @@ if (!empty($itineraryPlaces)) {
             Plan Trip
         </a>
 
-        <a href="my_trips.php">
+        <a
+            href="my_trips.php"
+            class="active"
+        >
             My Trips
         </a>
 
@@ -285,17 +1236,19 @@ if (!empty($itineraryPlaces)) {
 
             <?php
             echo strtoupper(
-                substr($username, 0, 1)
+                substr(
+                    $_SESSION["username"] ?? "U",
+                    0,
+                    1
+                )
             );
             ?>
 
         </div>
 
-
         <span class="user-name">
             <?php echo $username; ?>
         </span>
-
 
         <a
             href="logout.php"
@@ -309,591 +1262,696 @@ if (!empty($itineraryPlaces)) {
 </header>
 
 
-
 <main class="itinerary-main">
 
 
-    <section class="itinerary-header">
+<!-- =================================================
+     HEADER
+     ================================================= -->
+
+<section class="itinerary-header">
+
+    <div>
+
+        <p class="dashboard-small-title">
+            YOUR AI TRAVEL PLAN
+        </p>
+
+        <h1>
+
+            Your Trip to
+
+            <span>
+                <?php echo $destination; ?>
+            </span>
+
+            ✈️
+
+        </h1>
+
+        <p>
+            WanderAI analyzed your destination,
+            interests and travel preferences to create
+            a personalized itinerary.
+        </p>
+
+    </div>
+
+
+    <div class="itinerary-actions">
+
+        <a
+            href="plan_trip.php?trip_id=<?php echo $trip_id; ?>"
+            class="itinerary-action-btn edit-trip-action"
+        >
+            ✏️ Edit Trip
+        </a>
+
+
+        <a
+            href="itinerary.php?trip_id=<?php echo $trip_id; ?>&regenerate=1"
+            class="itinerary-action-btn regenerate-action"
+            onclick="return confirm('Regenerate your itinerary with fresh recommendations?');"
+        >
+            🔄 Regenerate
+        </a>
+
+
+        <a
+            href="plan_trip.php"
+            class="itinerary-action-btn new-trip-action"
+        >
+            ✈️ Plan Another Trip
+        </a>
+
+    </div>
+
+</section>
+
+
+<!-- =================================================
+     TRIP SUMMARY
+     ================================================= -->
+
+<section class="trip-summary-grid">
+
+    <div class="trip-summary-card">
+
+        <div class="summary-icon">
+            📍
+        </div>
 
         <div>
 
-            <p class="dashboard-small-title">
-                YOUR AI TRAVEL PLAN
-            </p>
+            <span>
+                Destination
+            </span>
+
+            <strong>
+                <?php echo $destination; ?>
+            </strong>
+
+        </div>
+
+    </div>
 
 
-            <h1>
-                Your Trip to
-                <span><?php echo $destination; ?></span>
-                ✈️
-            </h1>
+    <div class="trip-summary-card">
+
+        <div class="summary-icon">
+            📅
+        </div>
+
+        <div>
+
+            <span>
+                Start Date
+            </span>
+
+            <strong>
+                <?php echo $start_date; ?>
+            </strong>
+
+        </div>
+
+    </div>
 
 
-            <p>
-                WanderAI analyzed your destination,
-                interests and travel preferences to create
-                a personalized itinerary.
-            </p>
+    <div class="trip-summary-card">
+
+        <div class="summary-icon">
+            🗓️
+        </div>
+
+        <div>
+
+            <span>
+                Duration
+            </span>
+
+            <strong>
+                <?php echo $number_of_days; ?> Days
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="trip-summary-card">
+
+        <div class="summary-icon">
+            💰
+        </div>
+
+        <div>
+
+            <span>
+                Budget
+            </span>
+
+            <strong>
+                ₹<?php echo $budget; ?>
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="trip-summary-card">
+
+        <div class="summary-icon">
+            👥
+        </div>
+
+        <div>
+
+            <span>
+                Travelers
+            </span>
+
+            <strong>
+                <?php echo $travelers; ?>
+            </strong>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =================================================
+     PREFERENCES
+     ================================================= -->
+
+<section class="itinerary-preferences">
+
+    <h2>
+        Your Travel Preferences
+    </h2>
+
+    <div class="preference-details">
+
+        <div>
+
+            <span>
+                ❤️ Interests
+            </span>
+
+            <strong>
+
+                <?php
+                echo $interests
+                    ?: "No interests selected";
+                ?>
+
+            </strong>
 
         </div>
 
 
-        <div class="itinerary-actions">
+        <div>
 
-            <a
-                href="plan_trip.php?trip_id=<?php echo $trip_id; ?>"
-                class="itinerary-action-btn edit-trip-action"
-            >
-                ✏️ Edit Trip
-            </a>
+            <span>
+                🚗 Preferred Transport
+            </span>
 
+            <strong>
 
-            <a
-                href="itinerary.php?trip_id=<?php echo $trip_id; ?>&regenerate=1"
-                class="itinerary-action-btn regenerate-action"
-                onclick="return confirm('Regenerate your itinerary with fresh recommendations?');"
-            >
-                🔄 Regenerate
-            </a>
+                <?php
+                echo $transport
+                    ?: "Not specified";
+                ?>
 
-
-            <a
-                href="plan_trip.php"
-                class="itinerary-action-btn new-trip-action"
-            >
-                ✈️ Plan Another Trip
-            </a>
+            </strong>
 
         </div>
 
-    </section>
+    </div>
+
+</section>
 
 
+<!-- =================================================
+     AI ENGINE
+     ================================================= -->
 
-    <section class="trip-summary-grid">
+<section class="ai-itinerary-card">
+
+    <div class="ai-itinerary-icon">
+        🤖
+    </div>
+
+    <div>
+
+        <p class="dashboard-small-title">
+            AI ITINERARY ENGINE
+        </p>
+
+        <h2>
+            Your personalized itinerary is ready!
+        </h2>
+
+        <p>
+            WanderAI discovered places near your
+            destination, matched them with your interests
+            and arranged them into a day-wise schedule.
+        </p>
+
+    </div>
+
+</section>
 
 
-        <div class="trip-summary-card">
+<!-- =================================================
+     ACCOMMODATION
+     ================================================= -->
 
-            <div class="summary-icon">
-                📍
+<section class="accommodation-section">
+
+    <p class="dashboard-small-title">
+        YOUR STAY
+    </p>
+
+    <h2>
+        Accommodation for Your Entire Trip
+    </h2>
+
+
+    <?php if ($selectedAccommodation !== null): ?>
+
+        <?php
+
+        $accommodationLatitude =
+            $selectedAccommodation["latitude"] ?? "";
+
+        $accommodationLongitude =
+            $selectedAccommodation["longitude"] ?? "";
+
+        $accommodationMapQuery =
+            urlencode(
+                $accommodationLatitude .
+                "," .
+                $accommodationLongitude
+            );
+
+        ?>
+
+
+        <div class="accommodation-card">
+
+            <div class="accommodation-icon">
+                🏨
+            </div>
+
+
+            <div>
+
+                <h2>
+
+                    <?php
+                    echo htmlspecialchars(
+                        $selectedAccommodation["name"]
+                        ?? "Accommodation"
+                    );
+                    ?>
+
+                </h2>
+
+
+                <p>
+
+                    This accommodation is selected as
+                    your stay for the complete
+                    <?php echo $number_of_days; ?>-day trip.
+
+                </p>
+
+
+                <span class="place-category">
+                    Accommodation
+                </span>
+
+
+                <br><br>
+
+
+                <a
+                    class="timeline-map"
+                    href="https://www.google.com/maps/search/?api=1&query=<?php echo $accommodationMapQuery; ?>"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    🗺️ Open Accommodation in Google Maps
+                </a>
+
+            </div>
+
+        </div>
+
+
+    <?php else: ?>
+
+
+        <div class="ai-itinerary-card">
+
+            <div class="ai-itinerary-icon">
+                🏨
             </div>
 
             <div>
 
-                <span>Destination</span>
+                <h2>
+                    Accommodation not found
+                </h2>
 
-                <strong>
-                    <?php echo $destination; ?>
-                </strong>
+                <p>
+                    No suitable accommodation was found
+                    in the current place results.
+                </p>
 
             </div>
 
         </div>
 
 
-        <div class="trip-summary-card">
+    <?php endif; ?>
 
-            <div class="summary-icon">
-                📅
+</section>
+
+
+<!-- =================================================
+     RECOMMENDED PLACES
+     ================================================= -->
+
+<section class="recommended-places-section">
+
+    <p class="dashboard-small-title">
+        AI RECOMMENDATIONS
+    </p>
+
+    <h2>
+        Recommended Places to Visit
+    </h2>
+
+
+    <?php if (!empty($placesMessage)): ?>
+
+        <div class="message error">
+
+            <?php
+            echo htmlspecialchars(
+                $placesMessage
+            );
+            ?>
+
+        </div>
+
+
+    <?php elseif (empty($itineraryPlaces)): ?>
+
+
+        <div class="ai-itinerary-card">
+
+            <div class="ai-itinerary-icon">
+                🔍
             </div>
 
             <div>
 
-                <span>Start Date</span>
+                <h2>
+                    No matching places found
+                </h2>
 
-                <strong>
-                    <?php echo $start_date; ?>
-                </strong>
+                <p>
+                    Try selecting different interests
+                    or another destination.
+                </p>
 
             </div>
 
         </div>
 
 
-        <div class="trip-summary-card">
+    <?php else: ?>
 
-            <div class="summary-icon">
+
+        <p class="places-count">
+
+            🌍
+
+            <?php echo $placesDiscoveredCount; ?>
+
+            places discovered
+
+            <span>•</span>
+
+            ⭐
+
+            <?php echo count($itineraryPlaces); ?>
+
+            places selected for your itinerary
+
+        </p>
+
+
+        <div class="recommended-places-grid">
+
+
+            <?php foreach (
+                $itineraryPlaces as $place
+            ): ?>
+
+
+                <?php
+
+                $displayCategory =
+                    getDisplayCategory($place);
+
+                ?>
+
+
+                <div class="recommended-place-card">
+
+
+                    <h3>
+
+                        📍
+
+                        <?php
+                        echo htmlspecialchars(
+                            $place["name"]
+                            ?? "Unnamed Place"
+                        );
+                        ?>
+
+                    </h3>
+
+
+                    <span class="place-category">
+
+                        <?php
+                        echo htmlspecialchars(
+                            $displayCategory
+                        );
+                        ?>
+
+                    </span>
+
+
+                    <p>
+
+                        ⭐ Match Score:
+
+                        <strong>
+
+                            <?php
+                            echo (int)(
+                                $place[
+                                    "recommendation_score"
+                                ]
+                                ?? 0
+                            );
+                            ?>
+
+                        </strong>
+
+                    </p>
+
+
+                    <?php if (
+                        !empty(
+                            $place["opening_hours"]
+                        )
+                    ): ?>
+
+                        <p>
+
+                            🕐
+
+                            <?php
+                            echo htmlspecialchars(
+                                $place["opening_hours"]
+                            );
+                            ?>
+
+                        </p>
+
+                    <?php endif; ?>
+
+
+                </div>
+
+
+            <?php endforeach; ?>
+
+
+        </div>
+
+
+    <?php endif; ?>
+
+</section>
+
+
+<!-- =================================================
+     DAY-WISE ITINERARY
+     ================================================= -->
+
+<section class="day-itinerary-section">
+
+    <p class="dashboard-small-title">
+        DAY-WISE SCHEDULE
+    </p>
+
+    <h2>
+        Your Personalized Travel Schedule
+    </h2>
+
+    <p>
+        Places are arranged dynamically using estimated
+        distance, visit duration and your preferred
+        transport. Your selected accommodation remains
+        the same for the entire trip.
+    </p>
+
+
+    <?php if (empty($generatedItinerary)): ?>
+
+
+        <div class="ai-itinerary-card">
+
+            <div class="ai-itinerary-icon">
                 🗓️
             </div>
 
             <div>
 
-                <span>Duration</span>
+                <h2>
+                    Itinerary could not be generated
+                </h2>
 
-                <strong>
-                    <?php echo $number_of_days; ?> Days
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div class="trip-summary-card">
-
-            <div class="summary-icon">
-                💰
-            </div>
-
-            <div>
-
-                <span>Budget</span>
-
-                <strong>
-                    ₹<?php echo $budget; ?>
-                </strong>
+                <p>
+                    No suitable recommended places are
+                    currently available for this trip.
+                </p>
 
             </div>
 
         </div>
 
 
-        <div class="trip-summary-card">
-
-            <div class="summary-icon">
-                👥
-            </div>
-
-            <div>
-
-                <span>Travelers</span>
-
-                <strong>
-                    <?php echo $travelers; ?>
-                </strong>
-
-            </div>
-
-        </div>
-
-    </section>
+    <?php else: ?>
 
 
-
-    <section class="itinerary-preferences">
-
-        <h2>
-            Your Travel Preferences
-        </h2>
-
-
-        <div class="preference-details">
-
-            <div>
-
-                <span>
-                    ❤️ Interests
-                </span>
-
-                <strong>
-
-                    <?php
-                    echo $interests
-                        ?: "No interests selected";
-                    ?>
-
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <span>
-                    🚗 Preferred Transport
-                </span>
-
-                <strong>
-
-                    <?php
-                    echo $transport
-                        ?: "Not specified";
-                    ?>
-
-                </strong>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-
-    <section class="ai-itinerary-card">
-
-        <div class="ai-itinerary-icon">
-            🤖
-        </div>
-
-
-        <div>
-
-            <p class="dashboard-small-title">
-                AI ITINERARY ENGINE
-            </p>
-
-            <h2>
-                Your personalized itinerary is ready!
-            </h2>
-
-            <p>
-                WanderAI discovered places near your
-                destination, matched them with your interests
-                and arranged them into a day-wise schedule.
-            </p>
-
-        </div>
-
-    </section>
-
-
-
-    <section class="accommodation-section">
-
-        <p class="dashboard-small-title">
-            YOUR STAY
-        </p>
-
-        <h2>
-            Accommodation for Your Entire Trip
-        </h2>
-
-
-        <?php if ($selectedAccommodation !== null): ?>
+        <?php foreach (
+            $generatedItinerary as $dayData
+        ): ?>
 
 
             <?php
 
-            $accommodationMapQuery = urlencode(
-                ($selectedAccommodation["latitude"] ?? "")
-                . ","
-                . ($selectedAccommodation["longitude"] ?? "")
-            );
+            if (
+                !isset($dayData["day"]) ||
+                !isset($dayData["places"]) ||
+                !is_array($dayData["places"])
+            ) {
+                continue;
+            }
 
             ?>
 
 
-            <div class="accommodation-card">
-
-                <div class="accommodation-icon">
-                    🏨
-                </div>
+            <div class="day-card">
 
 
-                <div>
+                <div class="day-title">
 
-                    <h2>
+
+                    <div class="day-number">
 
                         <?php
-                        echo htmlspecialchars(
-                            $selectedAccommodation["name"] ?? ""
-                        );
+                        echo (int)$dayData["day"];
                         ?>
 
-                    </h2>
+                    </div>
 
 
-                    <p>
+                    <div>
 
-                        This accommodation is selected as
-                        your stay for the complete
-                        <?php echo $number_of_days; ?>-day trip.
+                        <h2>
 
-                    </p>
-
-
-                    <span class="place-category">
-                        Accommodation
-                    </span>
-
-
-                    <br>
-
-
-                    <a
-                        class="timeline-map"
-                        href="https://www.google.com/maps/search/?api=1&query=<?php echo $accommodationMapQuery; ?>"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        🗺️ Open Accommodation in Google Maps
-                    </a>
-
-                </div>
-
-            </div>
-
-
-        <?php else: ?>
-
-
-            <div class="ai-itinerary-card">
-
-                <div class="ai-itinerary-icon">
-                    🏨
-                </div>
-
-                <div>
-
-                    <h2>
-                        Accommodation not found
-                    </h2>
-
-                    <p>
-                        No suitable accommodation was found
-                        in the current place results.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-        <?php endif; ?>
-
-    </section>
-
-
-
-    <section class="recommended-places-section">
-
-        <p class="dashboard-small-title">
-            AI RECOMMENDATIONS
-        </p>
-
-        <h2>
-            Recommended Places to Visit
-        </h2>
-
-
-        <?php if (!empty($placesMessage)): ?>
-
-
-            <div class="message error">
-
-                <?php
-                echo htmlspecialchars($placesMessage);
-                ?>
-
-            </div>
-
-
-        <?php elseif (empty($itineraryPlaces)): ?>
-
-
-            <div class="ai-itinerary-card">
-
-                <div class="ai-itinerary-icon">
-                    🔍
-                </div>
-
-                <div>
-
-                    <h2>
-                        No matching places found
-                    </h2>
-
-                    <p>
-                        Try selecting different interests
-                        or another destination.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-        <?php else: ?>
-
-
-            <p class="places-count">
-
-                🌍 <?php echo count($allPlaces); ?>
-                places discovered
-
-                <span>•</span>
-
-                ⭐ <?php echo count($itineraryPlaces); ?>
-                places selected for your itinerary
-
-            </p>
-
-
-            <div class="recommended-places-grid">
-
-
-                <?php foreach ($itineraryPlaces as $place): ?>
-
-
-                    <div class="recommended-place-card">
-
-                        <h3>
-
-                            📍
-
+                            Day
                             <?php
-                            echo htmlspecialchars(
-                                $place["name"] ?? ""
-                            );
+                            echo (int)$dayData["day"];
                             ?>
 
-                        </h3>
-
-
-                        <span class="place-category">
-
-                            <?php
-                            echo htmlspecialchars(
-                                $place["category"] ?? ""
-                            );
-                            ?>
-
-                        </span>
+                        </h2>
 
 
                         <p>
 
-                            ⭐ Match Score:
-
-                            <strong>
-
-                                <?php
-                                echo
-                                    $place["recommendation_score"]
-                                    ?? 0;
-                                ?>
-
-                            </strong>
+                            Personalized schedule based on
+                            recommended places.
 
                         </p>
 
-
-                        <?php if (!empty($place["opening_hours"])): ?>
-
-
-                            <p>
-
-                                🕐
-
-                                <?php
-                                echo htmlspecialchars(
-                                    $place["opening_hours"]
-                                );
-                                ?>
-
-                            </p>
-
-
-                        <?php endif; ?>
-
                     </div>
 
-
-                <?php endforeach; ?>
-
-
-            </div>
-
-
-        <?php endif; ?>
-
-    </section>
-
-
-
-    <section class="day-itinerary-section">
-
-        <p class="dashboard-small-title">
-            DAY-WISE SCHEDULE
-        </p>
-
-        <h2>
-            Your Personalized Travel Schedule
-        </h2>
-
-        <p>
-            Places are arranged dynamically using
-            estimated distance and your preferred transport.
-            Your selected accommodation remains the same
-            for the entire trip.
-        </p>
-
-
-        <?php if (empty($generatedItinerary)): ?>
-
-
-            <div class="ai-itinerary-card">
-
-                <div class="ai-itinerary-icon">
-                    🗓️
                 </div>
 
-                <div>
 
-                    <h2>
-                        Itinerary could not be generated
-                    </h2>
-
-                    <p>
-                        No recommended places are currently
-                        available for this trip.
-                    </p>
-
-                </div>
-
-            </div>
+                <?php if (
+                    empty($dayData["places"])
+                ): ?>
 
 
-        <?php else: ?>
+                    <div class="ai-itinerary-card">
 
-
-            <?php foreach ($generatedItinerary as $dayData): ?>
-
-
-                <?php
-
-                if (
-                    !isset($dayData["day"]) ||
-                    !isset($dayData["places"]) ||
-                    !is_array($dayData["places"])
-                ) {
-                    continue;
-                }
-
-                ?>
-
-
-                <div class="day-card">
-
-
-                    <div class="day-title">
-
-                        <div class="day-number">
-
-                            <?php
-                            echo $dayData["day"];
-                            ?>
-
+                        <div class="ai-itinerary-icon">
+                            🌿
                         </div>
-
 
                         <div>
 
-                            <h2>
-                                Day <?php echo $dayData["day"]; ?>
-                            </h2>
+                            <h3>
+                                Free Day
+                            </h3>
 
                             <p>
-                                Personalized schedule based on
-                                recommended places.
+                                No additional places fit
+                                naturally into this day's
+                                available travel time.
                             </p>
 
                         </div>
 
                     </div>
 
+
+                <?php else: ?>
 
 
                     <div class="timeline">
@@ -907,21 +1965,34 @@ if (!empty($itineraryPlaces)) {
 
                             <?php
 
-                            $mapQuery = urlencode(
-                                ($schedulePlace["latitude"] ?? "")
-                                . ","
-                                . (
-                                    $schedulePlace["longitude"]
-                                    ?? ""
-                                )
-                            );
+                            $mapLatitude =
+                                $schedulePlace["latitude"]
+                                ?? "";
+
+                            $mapLongitude =
+                                $schedulePlace["longitude"]
+                                ?? "";
+
+                            $mapQuery =
+                                urlencode(
+                                    $mapLatitude .
+                                    "," .
+                                    $mapLongitude
+                                );
+
+                            $scheduleCategory =
+                                getDisplayCategory(
+                                    $schedulePlace
+                                );
 
                             ?>
 
 
                             <div class="timeline-item">
 
-                                <div class="timeline-dot"></div>
+
+                                <div class="timeline-dot">
+                                </div>
 
 
                                 <div class="timeline-time">
@@ -929,17 +2000,23 @@ if (!empty($itineraryPlaces)) {
                                     🕐
 
                                     <?php
-                                    echo
-                                        $schedulePlace["start_time"]
-                                        ?? "";
+                                    echo htmlspecialchars(
+                                        $schedulePlace[
+                                            "start_time"
+                                        ]
+                                        ?? ""
+                                    );
                                     ?>
 
                                     -
 
                                     <?php
-                                    echo
-                                        $schedulePlace["end_time"]
-                                        ?? "";
+                                    echo htmlspecialchars(
+                                        $schedulePlace[
+                                            "end_time"
+                                        ]
+                                        ?? ""
+                                    ); 
                                     ?>
 
                                 </div>
@@ -951,8 +2028,10 @@ if (!empty($itineraryPlaces)) {
 
                                     <?php
                                     echo htmlspecialchars(
-                                        $schedulePlace["name"]
-                                        ?? ""
+                                        $schedulePlace[
+                                            "name"
+                                        ]
+                                        ?? "Unnamed Place"
                                     );
                                     ?>
 
@@ -963,8 +2042,7 @@ if (!empty($itineraryPlaces)) {
 
                                     <?php
                                     echo htmlspecialchars(
-                                        $schedulePlace["category"]
-                                        ?? ""
+                                        $scheduleCategory
                                     );
                                     ?>
 
@@ -973,44 +2051,63 @@ if (!empty($itineraryPlaces)) {
 
                                 <div class="timeline-details">
 
+
                                     ⏱️ Visit:
+
                                     <?php
-                                    echo
-                                        $schedulePlace["visit_minutes"]
-                                        ?? 0;
+                                    echo (int)(
+                                        $schedulePlace[
+                                            "visit_minutes"
+                                        ]
+                                        ?? 0
+                                    );
                                     ?>
+
                                     minutes
 
+
                                     <br>
+
 
                                     🚗 Estimated travel:
+
                                     <?php
-                                    echo
-                                        $schedulePlace["travel_minutes"]
-                                        ?? 0;
+                                    echo (int)(
+                                        $schedulePlace[
+                                            "travel_minutes"
+                                        ]
+                                        ?? 0
+                                    );
                                     ?>
+
                                     minutes
+
 
                                     <br>
 
+
                                     📏 Distance:
+
                                     <?php
-                                    echo
-                                        $schedulePlace["distance_km"]
-                                        ?? 0;
+                                    echo htmlspecialchars(
+                                        $schedulePlace[
+                                            "distance_km"
+                                        ]
+                                        ?? 0
+                                    );
                                     ?>
+
                                     km
 
 
-                                    <?php
-                                    if (
+                                    <?php if (
                                         !empty(
                                             $schedulePlace[
                                                 "opening_hours"
                                             ]
                                         )
-                                    ):
-                                    ?>
+                                    ): ?>
+
 
                                         <br>
 
@@ -1024,7 +2121,9 @@ if (!empty($itineraryPlaces)) {
                                         );
                                         ?>
 
+
                                     <?php endif; ?>
+
 
                                 </div>
 
@@ -1035,8 +2134,11 @@ if (!empty($itineraryPlaces)) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
+
                                     🗺️ Open in Google Maps
+
                                 </a>
+
 
                             </div>
 
@@ -1046,35 +2148,51 @@ if (!empty($itineraryPlaces)) {
 
                     </div>
 
-                </div>
+
+                <?php endif; ?>
 
 
-            <?php endforeach; ?>
+            </div>
 
 
-        <?php endif; ?>
+        <?php endforeach; ?>
 
-    </section>
+
+    <?php endif; ?>
+
+
+</section>
+
 
 </main>
 
 
+<!-- =================================================
+     FOOTER
+     ================================================= -->
 
 <footer class="dashboard-footer">
 
     <div class="footer-logo">
+
         ✈ Wander<span>AI</span>
+
     </div>
+
 
     <p>
         Your intelligent travel planning companion.
     </p>
 
+
     <div class="copyright">
+
         © 2026 WanderAI — AI Travel Itinerary Optimizer
+
     </div>
 
 </footer>
+
 
 </body>
 </html>
