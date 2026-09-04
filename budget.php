@@ -1,6 +1,7 @@
+```php
 <?php
 /* =====================================================
-   WANDERAI - DYNAMIC TRIP BUDGET + BUDGET OPTIMIZER
+   WANDERAI - DYNAMIC TRIP BUDGET + ALTERNATIVE OPTIMIZER
    ===================================================== */
 
 session_start();
@@ -48,19 +49,13 @@ if (!$stmt) {
     die("Database error: " . $conn->error);
 }
 
-$stmt->bind_param(
-    "ii",
-    $trip_id,
-    $user_id
-);
-
+$stmt->bind_param("ii", $trip_id, $user_id);
 $stmt->execute();
 
 $result = $stmt->get_result();
 
 if ($result->num_rows !== 1) {
     $stmt->close();
-
     header("Location: dashboard.php");
     exit();
 }
@@ -144,20 +139,161 @@ if (
 
 
 /* =====================================================
-   COST ESTIMATION
+   HELPER FUNCTIONS
    ===================================================== */
 
-/*
- * These values are estimated.
- * They are not live market prices.
- */
+function formatRupees($amount)
+{
+    return "₹" .
+        number_format(
+            (float)$amount,
+            2
+        );
+}
+
+
+function getPlaceValue($place, $keys, $default = "")
+{
+    foreach ($keys as $key) {
+
+        if (
+            isset($place[$key]) &&
+            $place[$key] !== ""
+        ) {
+            return $place[$key];
+        }
+    }
+
+    return $default;
+}
+
+
+function estimatePlaceCost($place)
+{
+    $possibleCost =
+        getPlaceValue(
+            $place,
+            [
+                "estimated_cost",
+                "cost",
+                "entry_fee",
+                "price",
+                "estimated_price"
+            ],
+            null
+        );
+
+    if (is_numeric($possibleCost)) {
+
+        return max(
+            0,
+            (float)$possibleCost
+        );
+    }
+
+
+    $text =
+        strtolower(
+            (string)getPlaceValue(
+                $place,
+                [
+                    "price",
+                    "cost",
+                    "entry_fee",
+                    "description"
+                ],
+                ""
+            )
+        );
+
+
+    if (
+        strpos($text, "free") !== false ||
+        strpos($text, "no entry") !== false
+    ) {
+
+        return 0;
+    }
+
+
+    $category =
+        strtolower(
+            (string)getPlaceValue(
+                $place,
+                [
+                    "category",
+                    "type",
+                    "place_type"
+                ],
+                ""
+            )
+        );
+
+
+    if (
+        strpos($category, "park") !== false ||
+        strpos($category, "viewpoint") !== false ||
+        strpos($category, "nature") !== false ||
+        strpos($category, "beach") !== false ||
+        strpos($category, "scenic") !== false ||
+        strpos($category, "public") !== false
+    ) {
+
+        return 0;
+    }
+
+
+    return 250;
+}
+
+
+function isFreeOrCheapPlace($place)
+{
+    $cost = estimatePlaceCost($place);
+
+    if ($cost <= 150) {
+        return true;
+    }
+
+
+    $category =
+        strtolower(
+            (string)getPlaceValue(
+                $place,
+                [
+                    "category",
+                    "type",
+                    "place_type"
+                ],
+                ""
+            )
+        );
+
+
+    return (
+        strpos($category, "park") !== false ||
+        strpos($category, "viewpoint") !== false ||
+        strpos($category, "nature") !== false ||
+        strpos($category, "beach") !== false ||
+        strpos($category, "scenic") !== false ||
+        strpos($category, "cultural") !== false ||
+        strpos($category, "public") !== false
+    );
+}
 
 
 /* =====================================================
-   ACCOMMODATION
+   ACCOMMODATION COST
    ===================================================== */
 
 $accommodationPerNight = 0;
+
+$currentAccommodationName =
+    "Selected accommodation";
+
+$currentAccommodationCategory =
+    "";
+
 
 if ($accommodation !== null) {
 
@@ -171,24 +307,91 @@ if ($accommodation !== null) {
             $accommodation["name"] ?? ""
         );
 
+    $currentAccommodationName =
+        htmlspecialchars(
+            $accommodation["name"] ??
+            "Selected accommodation"
+        );
+
+    $currentAccommodationCategory =
+        htmlspecialchars(
+            $accommodation["category"] ??
+            "Accommodation"
+        );
+
+
+    $storedAccommodationPrice =
+        null;
+
+
+    foreach (
+        [
+            "price_per_night",
+            "estimated_cost_per_night",
+            "nightly_price",
+            "price",
+            "cost_per_night"
+        ] as $priceKey
+    ) {
+
+        if (
+            isset($accommodation[$priceKey]) &&
+            is_numeric(
+                $accommodation[$priceKey]
+            )
+        ) {
+
+            $storedAccommodationPrice =
+                (float)$accommodation[$priceKey];
+
+            break;
+        }
+    }
+
 
     if (
-        strpos($accommodationCategory, "hostel") !== false ||
-        strpos($accommodationName, "hostel") !== false
+        $storedAccommodationPrice !== null &&
+        $storedAccommodationPrice > 0
+    ) {
+
+        $accommodationPerNight =
+            $storedAccommodationPrice;
+
+    } elseif (
+        strpos(
+            $accommodationCategory,
+            "hostel"
+        ) !== false ||
+        strpos(
+            $accommodationName,
+            "hostel"
+        ) !== false
     ) {
 
         $accommodationPerNight = 700;
 
     } elseif (
-        strpos($accommodationCategory, "guest") !== false ||
-        strpos($accommodationName, "guest") !== false
+        strpos(
+            $accommodationCategory,
+            "guest"
+        ) !== false ||
+        strpos(
+            $accommodationName,
+            "guest"
+        ) !== false
     ) {
 
         $accommodationPerNight = 1200;
 
     } elseif (
-        strpos($accommodationCategory, "resort") !== false ||
-        strpos($accommodationName, "resort") !== false
+        strpos(
+            $accommodationCategory,
+            "resort"
+        ) !== false ||
+        strpos(
+            $accommodationName,
+            "resort"
+        ) !== false
     ) {
 
         $accommodationPerNight = 3000;
@@ -199,15 +402,16 @@ if ($accommodation !== null) {
     }
 }
 
+
 $nights =
     max(
         1,
         $numberOfDays - 1
     );
 
+
 $accommodationCost =
-    $accommodationPerNight
-    *
+    $accommodationPerNight *
     $nights;
 
 
@@ -218,43 +422,66 @@ $accommodationCost =
 $foodPerPersonPerDay = 700;
 
 $foodCost =
-    $foodPerPersonPerDay
-    *
-    $travelers
-    *
+    $foodPerPersonPerDay *
+    $travelers *
     $numberOfDays;
 
 
 /* =====================================================
-   TRANSPORT
+   TRANSPORTATION
    ===================================================== */
 
 $transportPerDayPerTraveler = 0;
 
+
 if (
-    strpos($transportRaw, "walking") !== false
+    strpos(
+        $transportRaw,
+        "walking"
+    ) !== false
 ) {
 
     $transportPerDayPerTraveler = 100;
 
 } elseif (
-    strpos($transportRaw, "bike") !== false ||
-    strpos($transportRaw, "bicycle") !== false
+    strpos(
+        $transportRaw,
+        "bike"
+    ) !== false ||
+    strpos(
+        $transportRaw,
+        "bicycle"
+    ) !== false
 ) {
 
     $transportPerDayPerTraveler = 300;
 
 } elseif (
-    strpos($transportRaw, "public") !== false ||
-    strpos($transportRaw, "bus") !== false ||
-    strpos($transportRaw, "train") !== false
+    strpos(
+        $transportRaw,
+        "public"
+    ) !== false ||
+    strpos(
+        $transportRaw,
+        "bus"
+    ) !== false ||
+    strpos(
+        $transportRaw,
+        "train"
+    ) !== false
 ) {
 
     $transportPerDayPerTraveler = 350;
 
 } elseif (
-    strpos($transportRaw, "taxi") !== false ||
-    strpos($transportRaw, "cab") !== false
+    strpos(
+        $transportRaw,
+        "taxi"
+    ) !== false ||
+    strpos(
+        $transportRaw,
+        "cab"
+    ) !== false
 ) {
 
     $transportPerDayPerTraveler = 1000;
@@ -265,41 +492,53 @@ if (
 }
 
 
-/*
- * Shared vehicle for car/taxi/cab.
- */
-
 if (
-    strpos($transportRaw, "car") !== false ||
-    strpos($transportRaw, "taxi") !== false ||
-    strpos($transportRaw, "cab") !== false
+    strpos(
+        $transportRaw,
+        "car"
+    ) !== false ||
+    strpos(
+        $transportRaw,
+        "taxi"
+    ) !== false ||
+    strpos(
+        $transportRaw,
+        "cab"
+    ) !== false
 ) {
 
     $transportCost =
-        $transportPerDayPerTraveler
-        *
+        $transportPerDayPerTraveler *
         $numberOfDays;
 
 } else {
 
     $transportCost =
-        $transportPerDayPerTraveler
-        *
-        $travelers
-        *
+        $transportPerDayPerTraveler *
+        $travelers *
         $numberOfDays;
 }
 
 
 /* =====================================================
-   ACTIVITY COUNT
+   COLLECT ITINERARY PLACES
    ===================================================== */
+
+$allPlaces = [];
 
 $activityPlaces = 0;
 
+
 foreach (
-    $generatedItinerary as $dayData
+    $generatedItinerary as $dayKey => $dayData
 ) {
+
+    if (
+        $dayKey === "_accommodation"
+    ) {
+        continue;
+    }
+
 
     if (
         !is_array($dayData) ||
@@ -309,6 +548,7 @@ foreach (
         continue;
     }
 
+
     foreach (
         $dayData["places"] as $place
     ) {
@@ -317,9 +557,18 @@ foreach (
             continue;
         }
 
-        if (!empty($place["is_break"])) {
+
+        if (
+            !empty(
+                $place["is_break"]
+            )
+        ) {
             continue;
         }
+
+
+        $allPlaces[] =
+            $place;
 
         $activityPlaces++;
     }
@@ -333,10 +582,8 @@ foreach (
 $activityCostPerVisit = 250;
 
 $activityCost =
-    $activityPlaces
-    *
-    $activityCostPerVisit
-    *
+    $activityPlaces *
+    $activityCostPerVisit *
     $travelers;
 
 
@@ -345,24 +592,19 @@ $activityCost =
    ===================================================== */
 
 $miscellaneousCost =
-    300
-    *
+    300 *
     $travelers;
 
 
 /* =====================================================
-   TOTAL
+   CURRENT TOTAL
    ===================================================== */
 
 $totalEstimatedCost =
-    $accommodationCost
-    +
-    $foodCost
-    +
-    $transportCost
-    +
-    $activityCost
-    +
+    $accommodationCost +
+    $foodCost +
+    $transportCost +
+    $activityCost +
     $miscellaneousCost;
 
 
@@ -371,9 +613,9 @@ $totalEstimatedCost =
    ===================================================== */
 
 $remainingBudget =
-    $userBudget
-    -
+    $userBudget -
     $totalEstimatedCost;
+
 
 if ($userBudget <= 0) {
 
@@ -383,7 +625,9 @@ if ($userBudget <= 0) {
     $budgetClass =
         "neutral";
 
-} elseif ($remainingBudget >= 0) {
+} elseif (
+    $remainingBudget >= 0
+) {
 
     $budgetStatus =
         "Your trip is within budget";
@@ -408,8 +652,11 @@ if ($userBudget <= 0) {
 if ($userBudget > 0) {
 
     $budgetPercentage =
-        ($totalEstimatedCost / $userBudget)
-        * 100;
+        (
+            $totalEstimatedCost /
+            $userBudget
+        ) *
+        100;
 
     $budgetPercentage =
         min(
@@ -427,79 +674,86 @@ if ($userBudget > 0) {
 
 
 /* =====================================================
-   =====================================================
-   BUDGET OPTIMIZATION ENGINE
-   =====================================================
+   ALTERNATIVE OPTIMIZATION ENGINE
    ===================================================== */
-
-/*
- * The optimizer creates a lower-cost scenario.
- *
- * IMPORTANT:
- * This does not change the user's saved itinerary.
- * It gives recommendations for reducing estimated cost.
- */
-
-
-/* -----------------------------------------------------
-   TARGET COST
-   ----------------------------------------------------- */
-
-$optimizedAccommodationCost =
-    $accommodationCost;
-
-$optimizedFoodCost =
-    $foodCost;
-
-$optimizedTransportCost =
-    $transportCost;
-
-$optimizedActivityCost =
-    $activityCost;
-
-$optimizedMiscellaneousCost =
-    $miscellaneousCost;
 
 $optimizationSuggestions = [];
 
 
 /* =====================================================
-   ACCOMMODATION OPTIMIZATION
+   1. ACCOMMODATION ALTERNATIVE
    ===================================================== */
 
-/*
- * Assume a budget-friendly accommodation target
- * of ₹700 per night.
- */
+$optimizedAccommodationCost =
+    $accommodationCost;
+
+$alternativeAccommodationName =
+    "Budget accommodation";
+
+$alternativeAccommodationCategory =
+    "Hostel / Guesthouse";
+
+$alternativeAccommodationPerNight =
+    700;
+
 
 if (
     $accommodationCost > 0 &&
-    $accommodationPerNight > 700
+    $accommodationPerNight >
+    $alternativeAccommodationPerNight
 ) {
 
-    $optimizedAccommodationPerNight = 700;
-
-    $optimizedAccommodationCost =
-        $optimizedAccommodationPerNight
-        *
+    $alternativeAccommodationCost =
+        $alternativeAccommodationPerNight *
         $nights;
 
-    $accommodationSaving =
-        $accommodationCost
-        -
-        $optimizedAccommodationCost;
 
-    if ($accommodationSaving > 0) {
+    $accommodationSaving =
+        $accommodationCost -
+        $alternativeAccommodationCost;
+
+
+    if (
+        $accommodationSaving > 0
+    ) {
+
+        $optimizedAccommodationCost =
+            $alternativeAccommodationCost;
+
 
         $optimizationSuggestions[] = [
+
+            "type" => "accommodation",
 
             "icon" => "🏨",
 
             "title" =>
-                "Choose budget accommodation",
+                "Choose cheaper accommodation",
+
+            "current" =>
+                $currentAccommodationName,
+
+            "alternative" =>
+                $alternativeAccommodationName,
 
             "description" =>
-                "Consider a hostel, budget hotel or guest house instead of a higher-priced stay.",
+                "Current estimated accommodation: " .
+                formatRupees(
+                    $accommodationCost
+                ) .
+                ". Estimated budget stay: " .
+                formatRupees(
+                    $alternativeAccommodationCost
+                ) .
+                " for " .
+                $nights .
+                " night(s).",
+
+            "current_cost" =>
+                $accommodationCost,
+
+            "alternative_cost" =>
+                $alternativeAccommodationCost,
 
             "saving" =>
                 $accommodationSaving
@@ -509,39 +763,62 @@ if (
 
 
 /* =====================================================
-   FOOD OPTIMIZATION
+   2. FOOD ALTERNATIVE
    ===================================================== */
 
-/*
- * Reduce estimated food cost from ₹700
- * to ₹500 per person per day.
- */
-
-$optimizedFoodPerPersonPerDay = 500;
+$optimizedFoodPerPersonPerDay =
+    500;
 
 $optimizedFoodCost =
-    $optimizedFoodPerPersonPerDay
-    *
-    $travelers
-    *
+    $optimizedFoodPerPersonPerDay *
+    $travelers *
     $numberOfDays;
 
+
 $foodSaving =
-    $foodCost
-    -
+    $foodCost -
     $optimizedFoodCost;
 
-if ($foodSaving > 0) {
+
+if (
+    $foodSaving > 0
+) {
 
     $optimizationSuggestions[] = [
+
+        "type" => "food",
 
         "icon" => "🍽️",
 
         "title" =>
-            "Choose budget-friendly meals",
+            "Choose lower-cost meals",
+
+        "current" =>
+            "Current meal plan",
+
+        "alternative" =>
+            "Local / budget meals",
 
         "description" =>
-            "Use local restaurants, affordable meals and reduce expensive dining options.",
+            "Current estimated food cost: " .
+            formatRupees(
+                $foodCost
+            ) .
+            ". Estimated budget meal plan: " .
+            formatRupees(
+                $optimizedFoodCost
+            ) .
+            " for " .
+            $travelers .
+            " traveler(s) over " .
+            $numberOfDays .
+            " day(s).",
+
+        "current_cost" =>
+            $foodCost,
+
+        "alternative_cost" =>
+            $optimizedFoodCost,
 
         "saving" =>
             $foodSaving
@@ -550,104 +827,292 @@ if ($foodSaving > 0) {
 
 
 /* =====================================================
-   TRANSPORT OPTIMIZATION
+   3. TRANSPORT ALTERNATIVE
    ===================================================== */
-
-/*
- * Public transport is treated as the budget option.
- */
 
 $optimizedTransportCost =
     $transportCost;
 
+$alternativeTransport =
+    "Public transport";
+
+$alternativeTransportDaily =
+    350;
+
+
 if (
-    strpos($transportRaw, "walking") === false &&
-    strpos($transportRaw, "public") === false &&
-    strpos($transportRaw, "bus") === false &&
-    strpos($transportRaw, "train") === false
+    strpos(
+        $transportRaw,
+        "walking"
+    ) !== false
 ) {
 
-    $publicTransportDaily =
-        350;
+    $alternativeTransport =
+        "Walking where practical";
+
+    $alternativeTransportCost =
+        0;
+
+} else {
+
+    $alternativeTransportCost =
+        $alternativeTransportDaily *
+        $travelers *
+        $numberOfDays;
+}
+
+
+if (
+    strpos($transportRaw, "car") !== false ||
+    strpos($transportRaw, "taxi") !== false ||
+    strpos($transportRaw, "cab") !== false
+) {
+
+    $alternativeTransportCost =
+        $alternativeTransportDaily *
+        $travelers *
+        $numberOfDays;
+}
+
+
+$transportSaving =
+    $transportCost -
+    $alternativeTransportCost;
+
+
+if (
+    $transportSaving > 0
+) {
 
     $optimizedTransportCost =
-        $publicTransportDaily
-        *
-        $travelers
-        *
-        $numberOfDays;
+        $alternativeTransportCost;
 
-    /*
-     * If only one traveler uses public transport,
-     * keep the calculation reasonable.
-     */
 
-    if ($optimizedTransportCost < $transportCost) {
+    $optimizationSuggestions[] = [
 
-        $transportSaving =
-            $transportCost
-            -
-            $optimizedTransportCost;
+        "type" => "transport",
 
-        $optimizationSuggestions[] = [
+        "icon" => "🚌",
 
-            "icon" => "🚌",
+        "title" =>
+            "Use a cheaper transport option",
 
-            "title" =>
-                "Use public transport",
+        "current" =>
+            $transportDisplay,
 
-            "description" =>
-                "Use buses or trains where practical instead of taxis or private transport.",
+        "alternative" =>
+            $alternativeTransport,
 
-            "saving" =>
-                $transportSaving
+        "description" =>
+            "Current estimated transportation: " .
+            formatRupees(
+                $transportCost
+            ) .
+            ". Estimated alternative transportation: " .
+            formatRupees(
+                $alternativeTransportCost
+            ) .
+            ".",
+
+        "current_cost" =>
+            $transportCost,
+
+        "alternative_cost" =>
+            $alternativeTransportCost,
+
+        "saving" =>
+            $transportSaving
+    ];
+}
+
+
+/* =====================================================
+   4. ACTIVITY ALTERNATIVES
+   ===================================================== */
+
+$paidActivities = [];
+
+$freeActivities = [];
+
+
+foreach (
+    $allPlaces as $place
+) {
+
+    $placeName =
+        getPlaceValue(
+            $place,
+            [
+                "name",
+                "place_name",
+                "title"
+            ],
+            "Recommended place"
+        );
+
+
+    $placeCost =
+        estimatePlaceCost(
+            $place
+        );
+
+
+    if (
+        isFreeOrCheapPlace(
+            $place
+        )
+    ) {
+
+        $freeActivities[] = [
+
+            "name" =>
+                $placeName,
+
+            "cost" =>
+                $placeCost,
+
+            "category" =>
+                getPlaceValue(
+                    $place,
+                    [
+                        "category",
+                        "type",
+                        "place_type"
+                    ],
+                    "Attraction"
+                )
+        ];
+
+    } else {
+
+        $paidActivities[] = [
+
+            "name" =>
+                $placeName,
+
+            "cost" =>
+                $placeCost,
+
+            "category" =>
+                getPlaceValue(
+                    $place,
+                    [
+                        "category",
+                        "type",
+                        "place_type"
+                    ],
+                    "Attraction"
+                )
         ];
     }
 }
 
 
 /* =====================================================
-   ACTIVITY OPTIMIZATION
+   REPLACE MOST EXPENSIVE PAID ACTIVITY
    ===================================================== */
 
-/*
- * If there are many paid activities,
- * suggest reducing some of them.
- */
+$activityOptimizedCost =
+    $activityCost;
 
-$optimizedActivityPlaces =
-    $activityPlaces;
+$activityAlternativeNames = [];
 
-if ($activityPlaces > 4) {
 
-    $freeOrLowerCostPlaces =
-        $activityPlaces - 4;
+if (
+    !empty($paidActivities) &&
+    !empty($freeActivities)
+) {
 
-    $optimizedActivityPlaces = 4;
+    usort(
+        $paidActivities,
+        function($a, $b) {
+            return $b["cost"] <=> $a["cost"];
+        }
+    );
 
-    $optimizedActivityCost =
-        $optimizedActivityPlaces
-        *
-        $activityCostPerVisit
-        *
-        $travelers;
 
-    $activitySaving =
-        $activityCost
-        -
-        $optimizedActivityCost;
+    $paidToReplace =
+        $paidActivities[0];
 
-    if ($activitySaving > 0) {
+    $alternativePlace =
+        $freeActivities[0];
+
+
+    $currentActivityPrice =
+        $paidToReplace["cost"];
+
+    $alternativeActivityPrice =
+        $alternativePlace["cost"];
+
+
+    if (
+        $currentActivityPrice >
+        $alternativeActivityPrice
+    ) {
+
+        $activitySavingPerTraveler =
+            $currentActivityPrice -
+            $alternativeActivityPrice;
+
+
+        $activitySaving =
+            $activitySavingPerTraveler *
+            $travelers;
+
+
+        $activitySaving =
+            min(
+                $activitySaving,
+                $activityCost
+            );
+
+
+        $activityOptimizedCost =
+            $activityCost -
+            $activitySaving;
+
+
+        $activityAlternativeNames[] =
+            $alternativePlace["name"];
+
 
         $optimizationSuggestions[] = [
+
+            "type" => "activity",
 
             "icon" => "🎟️",
 
             "title" =>
-                "Reduce paid activities",
+                "Replace a paid attraction",
+
+            "current" =>
+                $paidToReplace["name"],
+
+            "alternative" =>
+                $alternativePlace["name"],
 
             "description" =>
-                "Replace some paid attractions with free parks, viewpoints, beaches, cultural areas or public places.",
+                "Replace " .
+                $paidToReplace["name"] .
+                " (estimated cost " .
+                formatRupees(
+                    $currentActivityPrice
+                ) .
+                ") with " .
+                $alternativePlace["name"] .
+                " (estimated cost " .
+                formatRupees(
+                    $alternativeActivityPrice
+                ) .
+                ").",
+
+            "current_cost" =>
+                $currentActivityPrice *
+                $travelers,
+
+            "alternative_cost" =>
+                $alternativeActivityPrice *
+                $travelers,
 
             "saving" =>
                 $activitySaving
@@ -657,31 +1122,91 @@ if ($activityPlaces > 4) {
 
 
 /* =====================================================
-   MISCELLANEOUS OPTIMIZATION
+   5. MORE FREE / CHEAP ACTIVITY OPTIONS
+   ===================================================== */
+
+$additionalActivityAlternatives = [];
+
+
+foreach (
+    $freeActivities as $freePlace
+) {
+
+    if (
+        !in_array(
+            $freePlace["name"],
+            $activityAlternativeNames,
+            true
+        )
+    ) {
+
+        $additionalActivityAlternatives[] =
+            $freePlace;
+    }
+
+
+    if (
+        count(
+            $additionalActivityAlternatives
+        ) >= 4
+    ) {
+        break;
+    }
+}
+
+
+/* =====================================================
+   6. MISCELLANEOUS
    ===================================================== */
 
 $optimizedMiscellaneousCost =
     max(
-        200 * $travelers,
+        200 *
+        $travelers,
         0
     );
 
+
 $miscellaneousSaving =
-    $miscellaneousCost
-    -
+    $miscellaneousCost -
     $optimizedMiscellaneousCost;
 
-if ($miscellaneousSaving > 0) {
+
+if (
+    $miscellaneousSaving > 0
+) {
 
     $optimizationSuggestions[] = [
+
+        "type" => "misc",
 
         "icon" => "🧾",
 
         "title" =>
-            "Control miscellaneous expenses",
+            "Reduce miscellaneous expenses",
+
+        "current" =>
+            "Current expense buffer",
+
+        "alternative" =>
+            "Reasonable minimum buffer",
 
         "description" =>
-            "Keep a smaller emergency and small-expense allowance while maintaining a reasonable buffer.",
+            "Current miscellaneous allowance: " .
+            formatRupees(
+                $miscellaneousCost
+            ) .
+            ". Recommended minimum buffer: " .
+            formatRupees(
+                $optimizedMiscellaneousCost
+            ) .
+            ".",
+
+        "current_cost" =>
+            $miscellaneousCost,
+
+        "alternative_cost" =>
+            $optimizedMiscellaneousCost,
 
         "saving" =>
             $miscellaneousSaving
@@ -694,14 +1219,10 @@ if ($miscellaneousSaving > 0) {
    ===================================================== */
 
 $optimizedTotalCost =
-    $optimizedAccommodationCost
-    +
-    $optimizedFoodCost
-    +
-    $optimizedTransportCost
-    +
-    $optimizedActivityCost
-    +
+    $optimizedAccommodationCost +
+    $optimizedFoodCost +
+    $optimizedTransportCost +
+    $activityOptimizedCost +
     $optimizedMiscellaneousCost;
 
 
@@ -710,9 +1231,9 @@ $optimizedTotalCost =
    ===================================================== */
 
 $totalPotentialSaving =
-    $totalEstimatedCost
-    -
+    $totalEstimatedCost -
     $optimizedTotalCost;
+
 
 $totalPotentialSaving =
     max(
@@ -726,9 +1247,9 @@ $totalPotentialSaving =
    ===================================================== */
 
 $optimizedRemainingBudget =
-    $userBudget
-    -
+    $userBudget -
     $optimizedTotalCost;
+
 
 if ($userBudget <= 0) {
 
@@ -738,7 +1259,9 @@ if ($userBudget <= 0) {
     $optimizedClass =
         "neutral";
 
-} elseif ($optimizedRemainingBudget >= 0) {
+} elseif (
+    $optimizedRemainingBudget >= 0
+) {
 
     $optimizedStatus =
         "The optimized estimate fits your budget.";
@@ -757,341 +1280,497 @@ if ($userBudget <= 0) {
 
 
 /* =====================================================
-   CURRENCY FORMAT
+   OPTIMIZED PERCENTAGE
    ===================================================== */
 
-function formatRupees($amount)
-{
-    return "₹" .
-        number_format(
-            (float)$amount,
-            2
+if ($userBudget > 0) {
+
+    $optimizedPercentage =
+        (
+            $optimizedTotalCost /
+            $userBudget
+        ) *
+        100;
+
+
+    $optimizedPercentage =
+        min(
+            100,
+            max(
+                0,
+                $optimizedPercentage
+            )
         );
+
+} else {
+
+    $optimizedPercentage = 0;
 }
 
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-    <title>
-        Trip Budget | WanderAI
-    </title>
+<title>
+    Trip Budget | WanderAI
+</title>
 
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
+<link
+    rel="stylesheet"
+    href="style.css"
+>
 
-    <style>
+<style>
 
-        .budget-main {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 50px 25px;
-        }
+/* =====================================================
+   BUDGET PAGE
+   ===================================================== */
 
-        .budget-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 30px;
-            margin-bottom: 35px;
-        }
+.budget-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 50px 25px;
+}
 
-        .budget-header h1 {
-            margin-bottom: 10px;
-        }
+.budget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 35px;
+}
 
-        .budget-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+.budget-header h1 {
+    margin-bottom: 10px;
+}
 
-        .budget-action-btn {
-            display: inline-block;
-            padding: 12px 18px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 600;
-        }
+.budget-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
 
-        .budget-summary {
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(210px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+.budget-action-btn {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+}
 
-        .budget-card {
-            background: white;
-            border-radius: 18px;
-            padding: 25px;
-            box-shadow:
-                0 8px 25px rgba(0,0,0,0.08);
-        }
+.budget-summary {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(210px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
 
-        .budget-card-icon {
-            font-size: 30px;
-            margin-bottom: 12px;
-        }
+.budget-card {
+    background: white;
+    border-radius: 18px;
+    padding: 25px;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,0.08);
+}
 
-        .budget-card span {
-            display: block;
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
+.budget-card-icon {
+    font-size: 30px;
+    margin-bottom: 12px;
+}
 
-        .budget-card strong {
-            font-size: 24px;
-        }
+.budget-card span {
+    display: block;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
 
-        .budget-breakdown {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow:
-                0 8px 25px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
-        }
+.budget-card strong {
+    font-size: 24px;
+}
 
-        .budget-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 17px 0;
-            border-bottom: 1px solid #eee;
-        }
+.budget-breakdown {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
 
-        .budget-row:last-child {
-            border-bottom: none;
-        }
+.budget-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 17px 0;
+    border-bottom: 1px solid #eee;
+}
 
-        .budget-row-label {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+.budget-row:last-child {
+    border-bottom: none;
+}
 
-        .budget-row-label span {
-            font-size: 25px;
-        }
+.budget-row-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
-        .budget-row-label small {
-            display: block;
-            margin-top: 5px;
-            color: #777;
-        }
+.budget-row-label span {
+    font-size: 25px;
+}
 
-        .budget-total {
-            font-size: 22px;
-            font-weight: 800;
-            padding-top: 25px;
-        }
+.budget-row-label small {
+    display: block;
+    margin-top: 5px;
+    color: #777;
+}
 
-        .budget-status {
-            border-radius: 18px;
-            padding: 25px;
-            margin-bottom: 30px;
-        }
+.budget-total {
+    font-size: 22px;
+    font-weight: 800;
+    padding-top: 25px;
+}
 
-        .budget-status.success {
-            background: #e9f8ef;
-            border: 1px solid #b7e6c7;
-        }
+.budget-status {
+    border-radius: 18px;
+    padding: 25px;
+    margin-bottom: 30px;
+}
 
-        .budget-status.danger {
-            background: #fff0f0;
-            border: 1px solid #f0bcbc;
-        }
+.budget-status.success,
+.optimizer-status.success {
+    background: #e9f8ef;
+    border: 1px solid #b7e6c7;
+}
 
-        .budget-status.neutral {
-            background: #f3f3f3;
-            border: 1px solid #ddd;
-        }
+.budget-status.danger,
+.optimizer-status.danger {
+    background: #fff0f0;
+    border: 1px solid #f0bcbc;
+}
 
-        .budget-status h2 {
-            margin-bottom: 8px;
-        }
+.budget-status.neutral,
+.optimizer-status.neutral {
+    background: #f3f3f3;
+    border: 1px solid #ddd;
+}
 
-        .budget-progress {
-            width: 100%;
-            height: 14px;
-            background: #eee;
-            border-radius: 20px;
-            overflow: hidden;
-            margin-top: 18px;
-        }
+.budget-status h2 {
+    margin-bottom: 8px;
+}
 
-        .budget-progress-bar {
-            height: 100%;
-            width: <?php echo $budgetPercentage; ?>%;
-            background: #5b7cff;
-            border-radius: 20px;
-        }
+.budget-progress {
+    width: 100%;
+    height: 14px;
+    background: #eee;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 18px;
+}
 
-        .budget-note {
-            background: #fff9e8;
-            border: 1px solid #f0dfaa;
-            border-radius: 15px;
-            padding: 20px;
-            color: #66551a;
-            margin-bottom: 30px;
-        }
+.budget-progress-bar {
+    height: 100%;
+    width: <?php echo $budgetPercentage; ?>%;
+    background: #5b7cff;
+    border-radius: 20px;
+}
 
-
-        /* =================================================
-           BUDGET OPTIMIZER
-           ================================================= */
-
-        .budget-optimizer {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow:
-                0 8px 25px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
-        }
-
-        .optimizer-header {
-            margin-bottom: 25px;
-        }
-
-        .optimizer-header h2 {
-            margin-bottom: 8px;
-        }
-
-        .optimizer-summary {
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(210px, 1fr));
-            gap: 18px;
-            margin-bottom: 25px;
-        }
-
-        .optimizer-card {
-            border-radius: 15px;
-            padding: 20px;
-            background: #f7f8ff;
-            border: 1px solid #e4e7ff;
-        }
-
-        .optimizer-card span {
-            display: block;
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        .optimizer-card strong {
-            font-size: 22px;
-        }
-
-        .optimizer-status {
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-        }
-
-        .optimizer-status.success {
-            background: #e9f8ef;
-            border: 1px solid #b7e6c7;
-        }
-
-        .optimizer-status.danger {
-            background: #fff0f0;
-            border: 1px solid #f0bcbc;
-        }
-
-        .optimizer-status.neutral {
-            background: #f3f3f3;
-            border: 1px solid #ddd;
-        }
-
-        .optimization-list {
-            display: grid;
-            gap: 15px;
-        }
-
-        .optimization-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            padding: 18px;
-            border: 1px solid #eee;
-            border-radius: 14px;
-            background: #fafafa;
-        }
-
-        .optimization-left {
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-        }
-
-        .optimization-icon {
-            font-size: 28px;
-        }
-
-        .optimization-item h3 {
-            margin: 0 0 5px;
-        }
-
-        .optimization-item p {
-            margin: 0;
-            color: #666;
-        }
-
-        .saving-badge {
-            white-space: nowrap;
-            background: #e9f8ef;
-            color: #18733d;
-            border: 1px solid #b7e6c7;
-            border-radius: 20px;
-            padding: 8px 13px;
-            font-weight: 700;
-        }
-
-        .no-optimization {
-            padding: 20px;
-            border-radius: 14px;
-            background: #f5f5f5;
-        }
+.budget-note {
+    background: #fff9e8;
+    border: 1px solid #f0dfaa;
+    border-radius: 15px;
+    padding: 20px;
+    color: #66551a;
+    margin-bottom: 30px;
+}
 
 
-        @media (max-width: 700px) {
+/* =====================================================
+   OPTIMIZER
+   ===================================================== */
 
-            .budget-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+.budget-optimizer {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
 
-            .budget-row {
-                gap: 15px;
-            }
+.optimizer-header {
+    margin-bottom: 25px;
+}
 
-            .optimization-item {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+.optimizer-header h2 {
+    margin-bottom: 8px;
+}
 
-        }
+.optimizer-summary {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(210px, 1fr));
+    gap: 18px;
+    margin-bottom: 25px;
+}
 
-    </style>
+.optimizer-card {
+    border-radius: 15px;
+    padding: 20px;
+    background: #f7f8ff;
+    border: 1px solid #e4e7ff;
+}
+
+.optimizer-card span {
+    display: block;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.optimizer-card strong {
+    font-size: 22px;
+}
+
+.optimizer-status {
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+}
+
+.optimizer-progress {
+    width: 100%;
+    height: 12px;
+    background: #eee;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.optimizer-progress-bar {
+    height: 100%;
+    width: <?php echo $optimizedPercentage; ?>%;
+    background: #4caf50;
+    border-radius: 20px;
+}
+
+
+/* =====================================================
+   RECOMMENDATIONS
+   ===================================================== */
+
+.optimization-list {
+    display: grid;
+    gap: 18px;
+}
+
+.optimization-item {
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: 20px;
+    background: #fafafa;
+}
+
+.optimization-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.optimization-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.optimization-icon {
+    font-size: 30px;
+}
+
+.optimization-item h3 {
+    margin: 0 0 7px;
+}
+
+.optimization-item p {
+    margin: 5px 0;
+    color: #666;
+    line-height: 1.6;
+}
+
+.recommendation-box {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 12px;
+    background: white;
+    border: 1px solid #eee;
+}
+
+.recommendation-box strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.cost-comparison {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.cost-box {
+    padding: 13px;
+    border-radius: 10px;
+    background: #f6f6f6;
+}
+
+.cost-box span {
+    display: block;
+    color: #777;
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+
+.cost-box strong {
+    font-size: 18px;
+}
+
+.saving-badge {
+    white-space: nowrap;
+    background: #e9f8ef;
+    color: #18733d;
+    border: 1px solid #b7e6c7;
+    border-radius: 20px;
+    padding: 8px 13px;
+    font-weight: 700;
+}
+
+
+/* =====================================================
+   FREE / CHEAP ALTERNATIVES
+   ===================================================== */
+
+.alternative-places {
+    margin-top: 25px;
+}
+
+.alternative-places h3 {
+    margin-bottom: 15px;
+}
+
+.alternative-place-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+.alternative-place {
+    padding: 16px;
+    border-radius: 14px;
+    background: #f8f9ff;
+    border: 1px solid #e1e4ff;
+}
+
+.alternative-place strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.alternative-place small {
+    color: #777;
+}
+
+.no-optimization {
+    padding: 20px;
+    border-radius: 14px;
+    background: #f5f5f5;
+}
+
+
+/* =====================================================
+   APPLY OPTIMIZATION BUTTON
+   ===================================================== */
+
+.apply-optimization-box {
+    margin-top: 30px;
+    padding: 25px;
+    border-radius: 16px;
+    background: #f7f8ff;
+    border: 1px solid #dfe3ff;
+    text-align: center;
+}
+
+.apply-optimization-box h3 {
+    margin-bottom: 8px;
+}
+
+.apply-optimization-box p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.apply-optimization-btn {
+    display: inline-block;
+    padding: 14px 22px;
+    border-radius: 12px;
+    background: #5b7cff;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    transition: 0.2s;
+}
+
+.apply-optimization-btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+
+/* =====================================================
+   MOBILE
+   ===================================================== */
+
+@media (max-width: 700px) {
+
+    .budget-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .budget-row {
+        gap: 15px;
+    }
+
+    .optimization-top {
+        flex-direction: column;
+    }
+
+    .saving-badge {
+        white-space: normal;
+    }
+
+    .apply-optimization-btn {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+</style>
 
 </head>
 
@@ -1101,70 +1780,70 @@ function formatRupees($amount)
 
 <header class="dashboard-navbar">
 
-    <a
-        href="dashboard.php"
-        class="logo"
-    >
+<a
+    href="dashboard.php"
+    class="logo"
+>
 
-        <span class="logo-icon">
-            ✈
-        </span>
+<span class="logo-icon">
+    ✈
+</span>
 
-        <span>
-            Wander<span>AI</span>
-        </span>
+<span>
+    Wander<span>AI</span>
+</span>
 
-    </a>
-
-
-    <nav class="dashboard-nav">
-
-        <a href="dashboard.php">
-            Dashboard
-        </a>
-
-        <a href="plan_trip.php">
-            Plan Trip
-        </a>
-
-        <a
-            href="my_trips.php"
-            class="active"
-        >
-            My Trips
-        </a>
-
-    </nav>
+</a>
 
 
-    <div class="user-menu">
+<nav class="dashboard-nav">
 
-        <div class="user-avatar">
+<a href="dashboard.php">
+    Dashboard
+</a>
 
-            <?php
-            echo strtoupper(
-                substr(
-                    $_SESSION["username"] ?? "U",
-                    0,
-                    1
-                )
-            );
-            ?>
+<a href="plan_trip.php">
+    Plan Trip
+</a>
 
-        </div>
+<a
+    href="my_trips.php"
+    class="active"
+>
+    My Trips
+</a>
 
-        <span class="user-name">
-            <?php echo $username; ?>
-        </span>
+</nav>
 
-        <a
-            href="logout.php"
-            class="logout-btn"
-        >
-            Logout
-        </a>
 
-    </div>
+<div class="user-menu">
+
+<div class="user-avatar">
+
+<?php
+echo strtoupper(
+    substr(
+        $_SESSION["username"] ?? "U",
+        0,
+        1
+    )
+);
+?>
+
+</div>
+
+<span class="user-name">
+    <?php echo $username; ?>
+</span>
+
+<a
+    href="logout.php"
+    class="logout-btn"
+>
+    Logout
+</a>
+
+</div>
 
 </header>
 
@@ -1172,646 +1851,899 @@ function formatRupees($amount)
 <main class="budget-main">
 
 
-    <!-- =================================================
-         HEADER
-         ================================================= -->
+<!-- =================================================
+     HEADER
+     ================================================= -->
 
-    <section class="budget-header">
+<section class="budget-header">
 
-        <div>
+<div>
 
-            <p class="dashboard-small-title">
-                WANDERAI BUDGET MANAGEMENT
-            </p>
+<p class="dashboard-small-title">
+    WANDERAI BUDGET MANAGEMENT
+</p>
 
-            <h1>
-                💰 Trip Budget
-            </h1>
+<h1>
+    💰 Trip Budget
+</h1>
 
-            <p>
-                Estimated travel cost for your
-                <?php echo $destination; ?> trip.
-            </p>
+<p>
+    Estimated travel cost for your
+    <?php echo $destination; ?> trip.
+</p>
 
-        </div>
+</div>
 
 
-        <div class="budget-actions">
+<div class="budget-actions">
 
-            <a
-                href="itinerary.php?trip_id=<?php echo $trip_id; ?>"
-                class="budget-action-btn"
-            >
-                🗓️ View Itinerary
-            </a>
+<a
+    href="itinerary.php?trip_id=<?php echo $trip_id; ?>"
+    class="budget-action-btn"
+>
+    🗓️ View Itinerary
+</a>
 
-        </div>
+</div>
 
-    </section>
+</section>
 
 
-    <!-- =================================================
-         SUMMARY
-         ================================================= -->
+<!-- =================================================
+     SUMMARY
+     ================================================= -->
 
-    <section class="budget-summary">
+<section class="budget-summary">
 
-        <div class="budget-card">
+<div class="budget-card">
 
-            <div class="budget-card-icon">
-                💰
-            </div>
+<div class="budget-card-icon">
+    💰
+</div>
 
-            <span>
-                Your Budget
-            </span>
+<span>
+    Your Budget
+</span>
 
-            <strong>
-                <?php
-                echo formatRupees($userBudget);
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $userBudget
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-card">
+<div class="budget-card">
 
-            <div class="budget-card-icon">
-                🧮
-            </div>
+<div class="budget-card-icon">
+    🧮
+</div>
 
-            <span>
-                Estimated Total
-            </span>
+<span>
+    Estimated Total
+</span>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $totalEstimatedCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $totalEstimatedCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-card">
+<div class="budget-card">
 
-            <div class="budget-card-icon">
-                📅
-            </div>
+<div class="budget-card-icon">
+    📅
+</div>
 
-            <span>
-                Trip Duration
-            </span>
+<span>
+    Trip Duration
+</span>
 
-            <strong>
-                <?php echo $numberOfDays; ?>
-                Days
-            </strong>
+<strong>
+    <?php echo $numberOfDays; ?>
+    Days
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-card">
+<div class="budget-card">
 
-            <div class="budget-card-icon">
-                👥
-            </div>
+<div class="budget-card-icon">
+    👥
+</div>
 
-            <span>
-                Travelers
-            </span>
+<span>
+    Travelers
+</span>
 
-            <strong>
-                <?php echo $travelers; ?>
-            </strong>
+<strong>
+    <?php echo $travelers; ?>
+</strong>
 
-        </div>
+</div>
 
-    </section>
+</section>
 
 
-    <!-- =================================================
-         STATUS
-         ================================================= -->
+<!-- =================================================
+     STATUS
+     ================================================= -->
 
-    <section
-        class="budget-status <?php echo $budgetClass; ?>"
-    >
+<section
+    class="budget-status <?php echo $budgetClass; ?>"
+>
 
-        <h2>
-            <?php
-            echo htmlspecialchars(
-                $budgetStatus
-            );
-            ?>
-        </h2>
+<h2>
+    <?php
+    echo htmlspecialchars(
+        $budgetStatus
+    );
+    ?>
+</h2>
 
 
-        <?php if ($userBudget > 0): ?>
+<?php if ($userBudget > 0): ?>
 
-            <?php if ($remainingBudget >= 0): ?>
+<?php if ($remainingBudget >= 0): ?>
 
-                <p>
-                    Estimated remaining budget:
+<p>
+    Estimated remaining budget:
 
-                    <strong>
-                        <?php
-                        echo formatRupees(
-                            $remainingBudget
-                        );
-                        ?>
-                    </strong>
-                </p>
+    <strong>
+        <?php
+        echo formatRupees(
+            $remainingBudget
+        );
+        ?>
+    </strong>
+</p>
 
-            <?php else: ?>
+<?php else: ?>
 
-                <p>
-                    Estimated amount over budget:
+<p>
+    Estimated amount over budget:
 
-                    <strong>
-                        <?php
-                        echo formatRupees(
-                            abs($remainingBudget)
-                        );
-                        ?>
-                    </strong>
-                </p>
+    <strong>
+        <?php
+        echo formatRupees(
+            abs(
+                $remainingBudget
+            )
+        );
+        ?>
+    </strong>
+</p>
 
-            <?php endif; ?>
+<?php endif; ?>
 
 
-            <div class="budget-progress">
+<div class="budget-progress">
 
-                <div
-                    class="budget-progress-bar"
-                ></div>
+<div
+    class="budget-progress-bar"
+></div>
 
-            </div>
+</div>
 
-        <?php else: ?>
+<?php else: ?>
 
-            <p>
-                Add a trip budget to compare your
-                estimated expenses.
-            </p>
+<p>
+    Add a trip budget to compare your
+    estimated expenses.
+</p>
 
-        <?php endif; ?>
+<?php endif; ?>
 
-    </section>
+</section>
 
 
-    <!-- =================================================
-         ORIGINAL BREAKDOWN
-         ================================================= -->
+<!-- =================================================
+     ORIGINAL BREAKDOWN
+     ================================================= -->
 
-    <section class="budget-breakdown">
+<section class="budget-breakdown">
 
-        <p class="dashboard-small-title">
-            ESTIMATED EXPENSE BREAKDOWN
-        </p>
+<p class="dashboard-small-title">
+    ESTIMATED EXPENSE BREAKDOWN
+</p>
 
-        <h2>
-            Where your money may go
-        </h2>
+<h2>
+    Where your money may go
+</h2>
 
 
-        <div class="budget-row">
+<div class="budget-row">
 
-            <div class="budget-row-label">
+<div class="budget-row-label">
 
-                <span>🏨</span>
+<span>🏨</span>
 
-                <div>
+<div>
 
-                    <strong>
-                        Accommodation
-                    </strong>
+<strong>
+    Accommodation
+</strong>
 
-                    <small>
-                        <?php echo $nights; ?>
-                        night(s)
-                    </small>
+<small>
+    <?php echo $nights; ?>
+    night(s)
+</small>
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $accommodationCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $accommodationCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-row">
+<div class="budget-row">
 
-            <div class="budget-row-label">
+<div class="budget-row-label">
 
-                <span>🍽️</span>
+<span>🍽️</span>
 
-                <div>
+<div>
 
-                    <strong>
-                        Food
-                    </strong>
+<strong>
+    Food
+</strong>
 
-                    <small>
-                        Estimated for
-                        <?php echo $travelers; ?>
-                        traveler(s)
-                    </small>
+<small>
+    Estimated for
+    <?php echo $travelers; ?>
+    traveler(s)
+</small>
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $foodCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $foodCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-row">
+<div class="budget-row">
 
-            <div class="budget-row-label">
+<div class="budget-row-label">
 
-                <span>🚗</span>
+<span>🚗</span>
 
-                <div>
+<div>
 
-                    <strong>
-                        Transportation
-                    </strong>
+<strong>
+    Transportation
+</strong>
 
-                    <small>
-                        <?php
-                        echo $transportDisplay;
-                        ?>
-                    </small>
+<small>
+    <?php echo $transportDisplay; ?>
+</small>
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $transportCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $transportCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-row">
+<div class="budget-row">
 
-            <div class="budget-row-label">
+<div class="budget-row-label">
 
-                <span>🎟️</span>
+<span>🎟️</span>
 
-                <div>
+<div>
 
-                    <strong>
-                        Activities / Entry
-                    </strong>
+<strong>
+    Activities / Entry
+</strong>
 
-                    <small>
-                        <?php
-                        echo $activityPlaces;
-                        ?>
-                        itinerary place(s)
-                    </small>
+<small>
+    <?php
+    echo $activityPlaces;
+    ?>
+    itinerary place(s)
+</small>
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $activityCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $activityCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-row">
+<div class="budget-row">
 
-            <div class="budget-row-label">
+<div class="budget-row-label">
 
-                <span>🧾</span>
+<span>🧾</span>
 
-                <div>
+<div>
 
-                    <strong>
-                        Miscellaneous
-                    </strong>
+<strong>
+    Miscellaneous
+</strong>
 
-                    <small>
-                        Emergency / small expenses
-                    </small>
+<small>
+    Emergency / small expenses
+</small>
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $miscellaneousCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $miscellaneousCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
 
-        <div class="budget-row budget-total">
+<div class="budget-row budget-total">
 
-            <span>
-                Estimated Total
-            </span>
+<span>
+    Estimated Total
+</span>
 
-            <strong>
-                <?php
-                echo formatRupees(
-                    $totalEstimatedCost
-                );
-                ?>
-            </strong>
+<strong>
+    <?php
+    echo formatRupees(
+        $totalEstimatedCost
+    );
+    ?>
+</strong>
 
-        </div>
+</div>
 
-    </section>
+</section>
 
 
-    <!-- =================================================
-         BUDGET OPTIMIZATION
-         ================================================= -->
+<!-- =================================================
+     AI BUDGET OPTIMIZATION
+     ================================================= -->
 
-    <?php if ($userBudget > 0): ?>
+<?php if ($userBudget > 0): ?>
 
-        <section class="budget-optimizer">
+<section class="budget-optimizer">
 
-            <div class="optimizer-header">
+<div class="optimizer-header">
 
-                <p class="dashboard-small-title">
-                    AI BUDGET OPTIMIZATION
-                </p>
+<p class="dashboard-small-title">
+    AI BUDGET OPTIMIZATION
+</p>
 
-                <h2>
-                    🤖 Ways to reduce your trip cost
-                </h2>
+<h2>
+    🤖 Recommended lower-cost alternatives
+</h2>
 
-                <p>
-                    WanderAI analyzed your estimated
-                    expenses and generated lower-cost
-                    alternatives.
-                </p>
+<p>
+    WanderAI compares your current estimated
+    expenses with lower-cost alternatives and
+    calculates the potential savings.
+</p>
 
-            </div>
+</div>
 
 
-            <div class="optimizer-summary">
+<!-- =================================================
+     OPTIMIZER SUMMARY
+     ================================================= -->
 
-                <div class="optimizer-card">
+<div class="optimizer-summary">
 
-                    <span>
-                        Current Estimate
-                    </span>
+<div class="optimizer-card">
 
-                    <strong>
-                        <?php
-                        echo formatRupees(
-                            $totalEstimatedCost
-                        );
-                        ?>
-                    </strong>
+<span>
+    Current Estimate
+</span>
 
-                </div>
+<strong>
+    <?php
+    echo formatRupees(
+        $totalEstimatedCost
+    );
+    ?>
+</strong>
 
+</div>
 
-                <div class="optimizer-card">
 
-                    <span>
-                        Potential Savings
-                    </span>
+<div class="optimizer-card">
 
-                    <strong>
-                        <?php
-                        echo formatRupees(
-                            $totalPotentialSaving
-                        );
-                        ?>
-                    </strong>
+<span>
+    Potential Savings
+</span>
 
-                </div>
+<strong>
+    <?php
+    echo formatRupees(
+        $totalPotentialSaving
+    );
+    ?>
+</strong>
 
+</div>
 
-                <div class="optimizer-card">
 
-                    <span>
-                        Optimized Estimate
-                    </span>
+<div class="optimizer-card">
 
-                    <strong>
-                        <?php
-                        echo formatRupees(
-                            $optimizedTotalCost
-                        );
-                        ?>
-                    </strong>
+<span>
+    Optimized Estimate
+</span>
 
-                </div>
+<strong>
+    <?php
+    echo formatRupees(
+        $optimizedTotalCost
+    );
+    ?>
+</strong>
 
+</div>
 
-                <div class="optimizer-card">
 
-                    <span>
-                        Optimized Balance
-                    </span>
+<div class="optimizer-card">
 
-                    <strong>
-                        <?php
-                        echo formatRupees(
-                            $optimizedRemainingBudget
-                        );
-                        ?>
-                    </strong>
+<span>
+    Optimized Balance
+</span>
 
-                </div>
+<strong>
+    <?php
+    echo formatRupees(
+        $optimizedRemainingBudget
+    );
+    ?>
+</strong>
 
-            </div>
+</div>
 
+</div>
 
-            <div
-                class="optimizer-status <?php echo $optimizedClass; ?>"
-            >
 
-                <strong>
-                    <?php
-                    echo htmlspecialchars(
-                        $optimizedStatus
-                    );
-                    ?>
-                </strong>
+<!-- =================================================
+     OPTIMIZED STATUS
+     ================================================= -->
 
-                <?php if ($optimizedRemainingBudget >= 0): ?>
+<div
+    class="optimizer-status
+    <?php echo $optimizedClass; ?>"
+>
 
-                    <p>
-                        You could potentially save
-                        <?php
-                        echo formatRupees(
-                            $totalPotentialSaving
-                        );
-                        ?>
-                        and stay within your budget.
-                    </p>
+<strong>
 
-                <?php else: ?>
+<?php
+echo htmlspecialchars(
+    $optimizedStatus
+);
+?>
 
-                    <p>
-                        Even after applying the
-                        suggested savings, consider
-                        reducing the trip cost further.
-                    </p>
+</strong>
 
-                <?php endif; ?>
 
-            </div>
+<?php if (
+    $optimizedRemainingBudget >= 0
+): ?>
 
+<p>
 
-            <?php if (!empty($optimizationSuggestions)): ?>
+After applying the recommended alternatives,
+your estimated trip cost becomes
 
-                <div class="optimization-list">
+<strong>
+    <?php
+    echo formatRupees(
+        $optimizedTotalCost
+    );
+    ?>
+</strong>.
 
-                    <?php
-                    foreach (
-                        $optimizationSuggestions
-                        as $suggestion
-                    ):
-                    ?>
+You could potentially save
 
-                        <div class="optimization-item">
+<strong>
+    <?php
+    echo formatRupees(
+        $totalPotentialSaving
+    );
+    ?>
+</strong>.
 
-                            <div class="optimization-left">
+</p>
 
-                                <div class="optimization-icon">
+<?php else: ?>
 
-                                    <?php
-                                    echo $suggestion["icon"];
-                                    ?>
+<p>
 
-                                </div>
+The recommended alternatives reduce the
+estimated cost, but the trip may still exceed
+the entered budget.
 
-                                <div>
+</p>
 
-                                    <h3>
+<?php endif; ?>
 
-                                        <?php
-                                        echo htmlspecialchars(
-                                            $suggestion["title"]
-                                        );
-                                        ?>
 
-                                    </h3>
+<div class="optimizer-progress">
 
-                                    <p>
+<div
+    class="optimizer-progress-bar"
+></div>
 
-                                        <?php
-                                        echo htmlspecialchars(
-                                            $suggestion["description"]
-                                        );
-                                        ?>
+</div>
 
-                                    </p>
+</div>
 
-                                </div>
 
-                            </div>
+<!-- =================================================
+     RECOMMENDATIONS
+     ================================================= -->
 
+<?php if (
+    !empty(
+        $optimizationSuggestions
+    )
+): ?>
 
-                            <div class="saving-badge">
+<div class="optimization-list">
 
-                                Save up to
+<?php
+foreach (
+    $optimizationSuggestions
+    as $suggestion
+):
+?>
 
-                                <?php
-                                echo formatRupees(
-                                    $suggestion["saving"]
-                                );
-                                ?>
+<div class="optimization-item">
 
-                            </div>
+<div class="optimization-top">
 
-                        </div>
+<div class="optimization-left">
 
-                    <?php endforeach; ?>
+<div class="optimization-icon">
 
-                </div>
+<?php
+echo $suggestion["icon"];
+?>
 
-            <?php else: ?>
+</div>
 
-                <div class="no-optimization">
 
-                    <strong>
-                        ✅ Your current expense plan is
-                        already relatively budget-friendly.
-                    </strong>
+<div>
 
-                    <p>
-                        No major cost-saving recommendation
-                        is currently required.
-                    </p>
+<h3>
 
-                </div>
+<?php
+echo htmlspecialchars(
+    $suggestion["title"]
+);
+?>
 
-            <?php endif; ?>
+</h3>
 
-        </section>
 
-    <?php endif; ?>
+<p>
 
+<?php
+echo htmlspecialchars(
+    $suggestion["description"]
+);
+?>
 
-    <!-- =================================================
-         IMPORTANT NOTE
-         ================================================= -->
+</p>
 
-    <section class="budget-note">
 
-        <strong>
-            ℹ️ Important:
-        </strong>
+<div class="recommendation-box">
 
-        The amounts shown here are
-        <strong>estimated values</strong>,
-        not live prices.
+<strong>
+    Recommended alternative
+</strong>
 
-        Actual hotel rates,
-        transportation costs,
-        food prices and attraction fees
-        can vary depending on destination,
-        season, provider and traveler choices.
+<?php
+echo htmlspecialchars(
+    $suggestion["alternative"]
+);
+?>
 
-        The budget optimization section provides
-        estimated saving suggestions and does not
-        automatically book or change your trip.
+</div>
 
-    </section>
+
+<div class="cost-comparison">
+
+<div class="cost-box">
+
+<span>
+    Current
+</span>
+
+<strong>
+
+<?php
+echo formatRupees(
+    $suggestion["current_cost"]
+);
+?>
+
+</strong>
+
+</div>
+
+
+<div class="cost-box">
+
+<span>
+    Alternative
+</span>
+
+<strong>
+
+<?php
+echo formatRupees(
+    $suggestion["alternative_cost"]
+);
+?>
+
+</strong>
+
+</div>
+
+
+<div class="cost-box">
+
+<span>
+    Saving
+</span>
+
+<strong>
+
+<?php
+echo formatRupees(
+    $suggestion["saving"]
+);
+?>
+
+</strong>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="saving-badge">
+
+Save up to
+
+<?php
+echo formatRupees(
+    $suggestion["saving"]
+);
+?>
+
+</div>
+
+</div>
+
+</div>
+
+<?php
+endforeach;
+?>
+
+</div>
+
+<?php else: ?>
+
+<div class="no-optimization">
+
+<strong>
+    ✅ Your current trip is already relatively
+    budget-friendly.
+</strong>
+
+<p>
+    No significant lower-cost alternative was
+    identified from the available itinerary data.
+</p>
+
+</div>
+
+<?php endif; ?>
+
+
+<!-- =================================================
+     SPECIFIC FREE / CHEAP PLACES
+     ================================================= -->
+
+<?php if (
+    !empty(
+        $additionalActivityAlternatives
+    )
+): ?>
+
+<div class="alternative-places">
+
+<h3>
+    🎟️ More free / low-cost places from your itinerary
+</h3>
+
+<p>
+    These places can help reduce attraction
+    expenses while keeping the trip experience
+    aligned with the available itinerary.
+</p>
+
+
+<div class="alternative-place-grid">
+
+<?php
+foreach (
+    $additionalActivityAlternatives
+    as $place
+):
+?>
+
+<div class="alternative-place">
+
+<strong>
+
+<?php
+echo htmlspecialchars(
+    $place["name"]
+);
+?>
+
+</strong>
+
+<small>
+
+<?php
+echo htmlspecialchars(
+    $place["category"]
+);
+?>
+
+•
+
+<?php
+
+if (
+    $place["cost"] <= 0
+) {
+
+    echo "Free";
+
+} else {
+
+    echo formatRupees(
+        $place["cost"]
+    );
+
+}
+
+?>
+
+</small>
+
+</div>
+
+<?php endforeach; ?>
+
+</div>
+
+</div>
+
+<?php endif; ?>
+
+
+<!-- =================================================
+     APPLY BUDGET OPTIMIZATION
+     ================================================= -->
+
+<div class="apply-optimization-box">
+
+<h3>
+    🔄 Ready to reduce your trip cost?
+</h3>
+
+<p>
+    Apply the recommended lower-cost alternatives
+    and generate a new itinerary that stays within
+    your available budget where possible.
+</p>
+
+<a
+    href="optimize_itinerary.php?trip_id=<?php echo $trip_id; ?>"
+    class="apply-optimization-btn"
+    onclick="return confirm(
+        'Apply the recommended budget alternatives and regenerate your itinerary?'
+    );"
+>
+    🤖 Apply Alternatives & Regenerate Itinerary
+</a>
+
+</div>
+
+
+</section>
+
+<?php endif; ?>
+
+
+<!-- =================================================
+     IMPORTANT NOTE
+     ================================================= -->
+
+<section class="budget-note">
+
+<strong>
+    ℹ️ Important:
+</strong>
+
+The amounts shown here are
+<strong>estimated values</strong>,
+not live prices.
+
+Actual hotel rates,
+transportation costs,
+food prices and attraction fees
+can vary depending on destination,
+season, provider and traveler choices.
+
+The optimization section compares the
+current estimated cost with estimated
+lower-cost alternatives available from
+the trip information.
+
+It does not automatically change or
+book the saved itinerary.
+
+</section>
 
 
 </main>
@@ -1819,25 +2751,27 @@ function formatRupees($amount)
 
 <footer class="dashboard-footer">
 
-    <div class="footer-logo">
+<div class="footer-logo">
 
-        ✈ Wander<span>AI</span>
+✈ Wander<span>AI</span>
 
-    </div>
+</div>
 
-    <p>
-        Your intelligent travel planning companion.
-    </p>
+<p>
+    Your intelligent travel planning companion.
+</p>
 
-    <div class="copyright">
+<div class="copyright">
 
-        © 2026 WanderAI —
-        AI Travel Itinerary Optimizer
+© 2026 WanderAI —
+AI Travel Itinerary Optimizer
 
-    </div>
+</div>
 
 </footer>
 
 
 </body>
+
 </html>
+```
