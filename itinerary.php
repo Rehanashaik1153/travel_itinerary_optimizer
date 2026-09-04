@@ -1,4 +1,5 @@
 <?php
+
 /* =====================================================
    WANDERAI - DYNAMIC AI ITINERARY PAGE
    ===================================================== */
@@ -15,7 +16,11 @@ require_once "places.php";
 require_once "recommend_places.php";
 require_once "generate_itinerary.php";
 
-$username = htmlspecialchars($_SESSION["username"] ?? "User");
+
+$username = htmlspecialchars(
+    $_SESSION["username"] ?? "User"
+);
+
 $user_id = (int)$_SESSION["user_id"];
 
 
@@ -48,7 +53,10 @@ $stmt = $conn->prepare(
 );
 
 if (!$stmt) {
-    die("Database error: " . $conn->error);
+    die(
+        "Database error: " .
+        htmlspecialchars($conn->error)
+    );
 }
 
 $stmt->bind_param(
@@ -59,16 +67,22 @@ $stmt->bind_param(
 
 $stmt->execute();
 
-$result = $stmt->get_result();
+$result =
+    $stmt->get_result();
 
-if ($result->num_rows !== 1) {
+if (
+    !$result ||
+    $result->num_rows !== 1
+) {
+
     $stmt->close();
 
     header("Location: dashboard.php");
     exit();
 }
 
-$trip = $result->fetch_assoc();
+$trip =
+    $result->fetch_assoc();
 
 $stmt->close();
 
@@ -77,42 +91,95 @@ $stmt->close();
    TRIP DATA
    ===================================================== */
 
-$destinationRaw = $trip["destination"] ?? "";
+$destinationRaw =
+    trim(
+        $trip["destination"] ?? ""
+    );
 
-$destination = htmlspecialchars($destinationRaw);
+$destination =
+    htmlspecialchars(
+        $destinationRaw
+    );
 
-$startDateRaw = $trip["start_date"] ?? "";
 
-$start_date = !empty($startDateRaw)
-    ? date("d M Y", strtotime($startDateRaw))
-    : "";
+$startDateRaw =
+    $trip["start_date"] ?? "";
 
-$number_of_days = max(
-    1,
-    (int)($trip["number_of_days"] ?? 1)
-);
+$start_date = "";
 
-$budget = number_format(
-    (float)($trip["budget"] ?? 0),
-    2
-);
+if (!empty($startDateRaw)) {
 
-$travelers = max(
-    1,
-    (int)($trip["travelers"] ?? 1)
-);
+    $timestamp =
+        strtotime($startDateRaw);
 
-$interests = htmlspecialchars(
-    $trip["interests"] ?? ""
-);
+    if ($timestamp !== false) {
 
-$transport = htmlspecialchars(
-    $trip["transport_preference"] ?? ""
-);
+        $start_date =
+            date(
+                "d M Y",
+                $timestamp
+            );
+    }
+}
 
-$latitude = (float)($trip["latitude"] ?? 0);
 
-$longitude = (float)($trip["longitude"] ?? 0);
+$number_of_days =
+    max(
+        1,
+        (int)(
+            $trip[
+                "number_of_days"
+            ] ?? 1
+        )
+    );
+
+
+$budget =
+    number_format(
+        (float)(
+            $trip["budget"] ?? 0
+        ),
+        2
+    );
+
+
+$travelers =
+    max(
+        1,
+        (int)(
+            $trip["travelers"] ?? 1
+        )
+    );
+
+
+$interests =
+    htmlspecialchars(
+        $trip["interests"] ?? ""
+    );
+
+
+$transportRaw =
+    trim(
+        $trip[
+            "transport_preference"
+        ] ?? ""
+    );
+
+$transport =
+    htmlspecialchars(
+        $transportRaw
+    );
+
+
+$latitude =
+    (float)(
+        $trip["latitude"] ?? 0
+    );
+
+$longitude =
+    (float)(
+        $trip["longitude"] ?? 0
+    );
 
 
 /* =====================================================
@@ -121,7 +188,7 @@ $longitude = (float)($trip["longitude"] ?? 0);
 
 $regenerate =
     isset($_GET["regenerate"]) &&
-    $_GET["regenerate"] == "1";
+    $_GET["regenerate"] === "1";
 
 
 /* =====================================================
@@ -151,18 +218,27 @@ $savedPlacesCount = 0;
 
 $savedItinerary = [];
 
-if (!empty($trip["generated_itinerary"])) {
+if (
+    !empty(
+        $trip["generated_itinerary"]
+    )
+) {
 
-    $decoded = json_decode(
-        $trip["generated_itinerary"],
-        true
-    );
+    $decoded =
+        json_decode(
+            $trip[
+                "generated_itinerary"
+            ],
+            true
+        );
 
     if (
         is_array($decoded) &&
         !empty($decoded)
     ) {
-        $savedItinerary = $decoded;
+
+        $savedItinerary =
+            $decoded;
     }
 }
 
@@ -174,15 +250,27 @@ if (!empty($trip["generated_itinerary"])) {
 $savedAccommodation = null;
 
 if (
-    isset($savedItinerary["_accommodation"]) &&
-    is_array($savedItinerary["_accommodation"])
+    isset(
+        $savedItinerary[
+            "_accommodation"
+        ]
+    ) &&
+    is_array(
+        $savedItinerary[
+            "_accommodation"
+        ]
+    )
 ) {
 
     $savedAccommodation =
-        $savedItinerary["_accommodation"];
+        $savedItinerary[
+            "_accommodation"
+        ];
 
     unset(
-        $savedItinerary["_accommodation"]
+        $savedItinerary[
+            "_accommodation"
+        ]
     );
 }
 
@@ -194,32 +282,52 @@ if (
 $savedPlaces = [];
 
 if (
-    isset($savedItinerary["_recommended_places"]) &&
-    is_array($savedItinerary["_recommended_places"])
+    isset(
+        $savedItinerary[
+            "_recommended_places"
+        ]
+    ) &&
+    is_array(
+        $savedItinerary[
+            "_recommended_places"
+        ]
+    )
 ) {
 
     $savedPlaces =
-        $savedItinerary["_recommended_places"];
+        $savedItinerary[
+            "_recommended_places"
+        ];
 
     unset(
-        $savedItinerary["_recommended_places"]
+        $savedItinerary[
+            "_recommended_places"
+        ]
     );
 }
 
 
 /* =====================================================
-   GET SAVED DISCOVERED PLACE COUNT
+   GET SAVED DISCOVERED COUNT
    ===================================================== */
 
 if (
-    isset($savedItinerary["_places_count"])
+    isset(
+        $savedItinerary[
+            "_places_count"
+        ]
+    )
 ) {
 
     $savedPlacesCount =
-        (int)$savedItinerary["_places_count"];
+        (int)$savedItinerary[
+            "_places_count"
+        ];
 
     unset(
-        $savedItinerary["_places_count"]
+        $savedItinerary[
+            "_places_count"
+        ]
     );
 }
 
@@ -228,21 +336,30 @@ if (
    ACCOMMODATION DETECTOR
    ===================================================== */
 
-function isAccommodationPlace($place)
-{
+function isAccommodationPlace(
+    $place
+) {
+
     if (!is_array($place)) {
         return false;
     }
 
-    $name = strtolower(
-        trim($place["name"] ?? "")
-    );
+    $name =
+        strtolower(
+            trim(
+                $place["name"] ?? ""
+            )
+        );
 
-    $category = strtolower(
-        trim($place["category"] ?? "")
-    );
+    $category =
+        strtolower(
+            trim(
+                $place["category"] ?? ""
+            )
+        );
 
     $accommodationWords = [
+
         "accommodation",
         "hotel",
         "hostel",
@@ -255,17 +372,28 @@ function isAccommodationPlace($place)
         "chalet",
         "camp site",
         "camp_site",
+        "campsite",
         "alpine hut",
         "homestay",
-        "homestay"
+        "lodging"
     ];
 
-    foreach ($accommodationWords as $word) {
+    foreach (
+        $accommodationWords
+        as $word
+    ) {
 
         if (
-            strpos($category, $word) !== false ||
-            strpos($name, $word) !== false
+            strpos(
+                $category,
+                $word
+            ) !== false ||
+            strpos(
+                $name,
+                $word
+            ) !== false
         ) {
+
             return true;
         }
     }
@@ -276,54 +404,88 @@ function isAccommodationPlace($place)
 
 /* =====================================================
    DISPLAY CATEGORY DETECTOR
-   =====================================================
-
-   The API may return a wrong generic category.
-
-   Example:
-   Chimmini Wildlife Sanctuary
-   may come as "Entertainment".
-
-   This function uses the actual place name to provide
-   a more meaningful category on the itinerary page.
    ===================================================== */
 
-function getDisplayCategory($place)
-{
+function getDisplayCategory(
+    $place
+) {
+
     if (!is_array($place)) {
         return "Tourist Attraction";
     }
 
-    $name = strtolower(
-        trim($place["name"] ?? "")
-    );
+    $name =
+        strtolower(
+            trim(
+                $place["name"] ?? ""
+            )
+        );
 
-    $category = strtolower(
-        trim($place["category"] ?? "")
-    );
+    $category =
+        strtolower(
+            trim(
+                $place["category"] ?? ""
+            )
+        );
+
+
+    /* Accommodation */
+
+    if (
+        isAccommodationPlace(
+            $place
+        )
+    ) {
+        return "Accommodation";
+    }
 
 
     /* Waterfalls */
 
     if (
-        strpos($name, "waterfall") !== false ||
-        strpos($name, "waterfalls") !== false ||
-        strpos($name, "falls") !== false ||
-        strpos($category, "waterfall") !== false
+        strpos(
+            $name,
+            "waterfall"
+        ) !== false ||
+        strpos(
+            $name,
+            "waterfalls"
+        ) !== false ||
+        strpos(
+            $name,
+            "falls"
+        ) !== false ||
+        strpos(
+            $category,
+            "waterfall"
+        ) !== false
     ) {
+
         return "Nature & Scenic";
     }
 
 
-    /* Wildlife / Sanctuary */
+    /* Wildlife */
 
     if (
-        strpos($name, "wildlife") !== false ||
-        strpos($name, "sanctuary") !== false ||
-        strpos($name, "national park") !== false ||
-        strpos($name, "wildlife park") !== false ||
-        strpos($category, "wildlife") !== false
+        strpos(
+            $name,
+            "wildlife"
+        ) !== false ||
+        strpos(
+            $name,
+            "sanctuary"
+        ) !== false ||
+        strpos(
+            $name,
+            "national park"
+        ) !== false ||
+        strpos(
+            $category,
+            "wildlife"
+        ) !== false
     ) {
+
         return "Nature & Scenic";
     }
 
@@ -331,10 +493,20 @@ function getDisplayCategory($place)
     /* Beaches */
 
     if (
-        strpos($name, "beach") !== false ||
-        strpos($name, "coast") !== false ||
-        strpos($category, "beach") !== false
+        strpos(
+            $name,
+            "beach"
+        ) !== false ||
+        strpos(
+            $name,
+            "coast"
+        ) !== false ||
+        strpos(
+            $category,
+            "beach"
+        ) !== false
     ) {
+
         return "Beaches";
     }
 
@@ -342,17 +514,48 @@ function getDisplayCategory($place)
     /* Historical / Cultural */
 
     if (
-        strpos($name, "fort") !== false ||
-        strpos($name, "palace") !== false ||
-        strpos($name, "museum") !== false ||
-        strpos($name, "monument") !== false ||
-        strpos($name, "heritage") !== false ||
-        strpos($name, "archaeological") !== false ||
-        strpos($category, "historical") !== false ||
-        strpos($category, "historic") !== false ||
-        strpos($category, "cultural") !== false ||
-        strpos($category, "heritage") !== false
+        strpos(
+            $name,
+            "fort"
+        ) !== false ||
+        strpos(
+            $name,
+            "palace"
+        ) !== false ||
+        strpos(
+            $name,
+            "museum"
+        ) !== false ||
+        strpos(
+            $name,
+            "monument"
+        ) !== false ||
+        strpos(
+            $name,
+            "heritage"
+        ) !== false ||
+        strpos(
+            $name,
+            "archaeological"
+        ) !== false ||
+        strpos(
+            $category,
+            "historical"
+        ) !== false ||
+        strpos(
+            $category,
+            "historic"
+        ) !== false ||
+        strpos(
+            $category,
+            "cultural"
+        ) !== false ||
+        strpos(
+            $category,
+            "heritage"
+        ) !== false
     ) {
+
         return "Historical & Cultural";
     }
 
@@ -360,51 +563,200 @@ function getDisplayCategory($place)
     /* Religious */
 
     if (
-        strpos($name, "temple") !== false ||
-        strpos($name, "church") !== false ||
-        strpos($name, "mosque") !== false ||
-        strpos($name, "chapel") !== false ||
-        strpos($name, "shrine") !== false ||
-        strpos($name, "gurudwara") !== false ||
-        strpos($name, "monastery") !== false ||
-        strpos($category, "religious") !== false
+        strpos(
+            $name,
+            "temple"
+        ) !== false ||
+        strpos(
+            $name,
+            "church"
+        ) !== false ||
+        strpos(
+            $name,
+            "mosque"
+        ) !== false ||
+        strpos(
+            $name,
+            "chapel"
+        ) !== false ||
+        strpos(
+            $name,
+            "shrine"
+        ) !== false ||
+        strpos(
+            $name,
+            "gurudwara"
+        ) !== false ||
+        strpos(
+            $name,
+            "monastery"
+        ) !== false ||
+        strpos(
+            $category,
+            "religious"
+        ) !== false ||
+        strpos(
+            $category,
+            "worship"
+        ) !== false
     ) {
+
         return "Religious";
+    }
+
+
+    /* Shopping */
+
+    if (
+        strpos(
+            $name,
+            "market"
+        ) !== false ||
+        strpos(
+            $name,
+            "mall"
+        ) !== false ||
+        strpos(
+            $name,
+            "shopping"
+        ) !== false ||
+        strpos(
+            $category,
+            "shopping"
+        ) !== false
+    ) {
+
+        return "Shopping";
+    }
+
+
+    /* Food */
+
+    if (
+        strpos(
+            $category,
+            "food"
+        ) !== false ||
+        strpos(
+            $category,
+            "restaurant"
+        ) !== false ||
+        strpos(
+            $name,
+            "restaurant"
+        ) !== false ||
+        strpos(
+            $name,
+            "cafe"
+        ) !== false
+    ) {
+
+        return "Food";
     }
 
 
     /* Entertainment */
 
     if (
-        strpos($name, "water park") !== false ||
-        strpos($name, "amusement") !== false ||
-        strpos($name, "theme park") !== false ||
-        strpos($name, "aquarium") !== false ||
-        strpos($name, "zoo") !== false ||
-        strpos($name, "cinema") !== false ||
-        strpos($name, "theatre") !== false ||
-        strpos($name, "theater") !== false
+        strpos(
+            $name,
+            "water park"
+        ) !== false ||
+        strpos(
+            $name,
+            "waterpark"
+        ) !== false ||
+        strpos(
+            $name,
+            "amusement"
+        ) !== false ||
+        strpos(
+            $name,
+            "theme park"
+        ) !== false ||
+        strpos(
+            $name,
+            "aquarium"
+        ) !== false ||
+        strpos(
+            $name,
+            "zoo"
+        ) !== false ||
+        strpos(
+            $name,
+            "cinema"
+        ) !== false ||
+        strpos(
+            $name,
+            "theatre"
+        ) !== false ||
+        strpos(
+            $name,
+            "theater"
+        ) !== false ||
+        strpos(
+            $category,
+            "entertainment"
+        ) !== false
     ) {
+
         return "Entertainment";
     }
 
 
-    /* Nature / Scenic */
+    /* Nature */
 
     if (
-        strpos($name, "lake") !== false ||
-        strpos($name, "river") !== false ||
-        strpos($name, "hill") !== false ||
-        strpos($name, "mountain") !== false ||
-        strpos($name, "peak") !== false ||
-        strpos($name, "valley") !== false ||
-        strpos($name, "viewpoint") !== false ||
-        strpos($name, "view point") !== false ||
-        strpos($name, "forest") !== false ||
-        strpos($name, "garden") !== false ||
-        strpos($category, "nature") !== false ||
-        strpos($category, "scenic") !== false
+        strpos(
+            $name,
+            "lake"
+        ) !== false ||
+        strpos(
+            $name,
+            "river"
+        ) !== false ||
+        strpos(
+            $name,
+            "hill"
+        ) !== false ||
+        strpos(
+            $name,
+            "mountain"
+        ) !== false ||
+        strpos(
+            $name,
+            "peak"
+        ) !== false ||
+        strpos(
+            $name,
+            "valley"
+        ) !== false ||
+        strpos(
+            $name,
+            "viewpoint"
+        ) !== false ||
+        strpos(
+            $name,
+            "view point"
+        ) !== false ||
+        strpos(
+            $name,
+            "forest"
+        ) !== false ||
+        strpos(
+            $name,
+            "garden"
+        ) !== false ||
+        strpos(
+            $category,
+            "nature"
+        ) !== false ||
+        strpos(
+            $category,
+            "scenic"
+        ) !== false
     ) {
+
         return "Nature & Scenic";
     }
 
@@ -412,17 +764,29 @@ function getDisplayCategory($place)
     /* Parks */
 
     if (
-        strpos($category, "park") !== false ||
-        strpos($name, "park") !== false ||
-        strpos($category, "garden") !== false
+        strpos(
+            $category,
+            "park"
+        ) !== false ||
+        strpos(
+            $name,
+            "park"
+        ) !== false ||
+        strpos(
+            $category,
+            "garden"
+        ) !== false
     ) {
+
         return "Parks";
     }
 
 
-    /* Keep useful API category if available */
+    /* Generic API category */
 
-    if ($category !== "") {
+    if (
+        $category !== ""
+    ) {
 
         return ucwords(
             str_replace(
@@ -439,234 +803,7 @@ function getDisplayCategory($place)
 
 
 /* =====================================================
-   FINAL ITINERARY DUPLICATE CLEANUP
-   ===================================================== */
-
-function wanderItineraryNormaliseName($name)
-{
-    $name = strtolower(trim((string)$name));
-
-    $name = preg_replace(
-        '/[^a-z0-9\\s]/i',
-        ' ',
-        $name
-    );
-
-    $name = preg_replace(
-        '/\\s+/',
-        ' ',
-        $name
-    );
-
-    return trim($name);
-}
-
-
-function wanderItineraryCoordinates($place)
-{
-    $lat = (float)(
-        $place["latitude"]
-        ?? $place["lat"]
-        ?? 0
-    );
-
-    $lon = (float)(
-        $place["longitude"]
-        ?? $place["lon"]
-        ?? 0
-    );
-
-    return [$lat, $lon];
-}
-
-
-function wanderItineraryDistanceKm(
-    $lat1,
-    $lon1,
-    $lat2,
-    $lon2
-) {
-    $earthRadius = 6371;
-
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
-
-    $a =
-        sin($dLat / 2) * sin($dLat / 2)
-        +
-        cos(deg2rad($lat1))
-        * cos(deg2rad($lat2))
-        * sin($dLon / 2)
-        * sin($dLon / 2);
-
-    $a = min(1, max(0, $a));
-
-    return $earthRadius *
-        2 *
-        asin(sqrt($a));
-}
-
-
-function wanderItineraryIsDuplicate(
-    $candidate,
-    $existingPlaces
-) {
-    $candidateName =
-        wanderItineraryNormaliseName(
-            $candidate["name"] ?? ""
-        );
-
-    if ($candidateName === "") {
-        return true;
-    }
-
-    [$candidateLat, $candidateLon] =
-        wanderItineraryCoordinates($candidate);
-
-    foreach ($existingPlaces as $existing) {
-
-        $existingName =
-            wanderItineraryNormaliseName(
-                $existing["name"] ?? ""
-            );
-
-        if (
-            $candidateName ===
-            $existingName
-        ) {
-            return true;
-        }
-
-        if (
-            $existingName !== ""
-        ) {
-
-            similar_text(
-                $candidateName,
-                $existingName,
-                $percent
-            );
-
-            if (
-                $percent >= 88 ||
-                (
-                    strlen($candidateName) >= 18 &&
-                    strlen($existingName) >= 18 &&
-                    $percent >= 78
-                )
-            ) {
-                return true;
-            }
-        }
-
-        [$existingLat, $existingLon] =
-            wanderItineraryCoordinates($existing);
-
-        if (
-            $candidateLat == 0 ||
-            $candidateLon == 0 ||
-            $existingLat == 0 ||
-            $existingLon == 0
-        ) {
-            continue;
-        }
-
-        $distance =
-            wanderItineraryDistanceKm(
-                $candidateLat,
-                $candidateLon,
-                $existingLat,
-                $existingLon
-            );
-
-        $candidateText =
-            strtolower(
-                ($candidate["name"] ?? "")
-                . " "
-                . ($candidate["category"] ?? "")
-            );
-
-        $existingText =
-            strtolower(
-                ($existing["name"] ?? "")
-                . " "
-                . ($existing["category"] ?? "")
-            );
-
-        $candidateNatural =
-            strpos($candidateText, "waterfall") !== false ||
-            strpos($candidateText, "waterfalls") !== false ||
-            strpos($candidateText, " falls") !== false ||
-            strpos($candidateText, "nature") !== false ||
-            strpos($candidateText, "scenic") !== false;
-
-        $existingNatural =
-            strpos($existingText, "waterfall") !== false ||
-            strpos($existingText, "waterfalls") !== false ||
-            strpos($existingText, " falls") !== false ||
-            strpos($existingText, "nature") !== false ||
-            strpos($existingText, "scenic") !== false;
-
-        if (
-            $candidateNatural &&
-            $existingNatural &&
-            $distance <= 3.5
-        ) {
-            $candidateWater =
-                strpos($candidateText, "waterfall") !== false ||
-                strpos($candidateText, "waterfalls") !== false ||
-                strpos($candidateText, " falls") !== false;
-
-            $existingWater =
-                strpos($existingText, "waterfall") !== false ||
-                strpos($existingText, "waterfalls") !== false ||
-                strpos($existingText, " falls") !== false;
-
-            if (
-                $candidateWater &&
-                $existingWater
-            ) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-
-function wanderItineraryUniquePlaces($places)
-{
-    $unique = [];
-
-    if (!is_array($places)) {
-        return [];
-    }
-
-    foreach ($places as $place) {
-
-        if (!is_array($place)) {
-            continue;
-        }
-
-        if (
-            wanderItineraryIsDuplicate(
-                $place,
-                $unique
-            )
-        ) {
-            continue;
-        }
-
-        $unique[] = $place;
-    }
-
-    return $unique;
-}
-
-
-/* =====================================================
-   GENERATE OR LOAD ITINERARY
+   DETERMINE WHETHER GENERATION IS REQUIRED
    ===================================================== */
 
 $needsGeneration =
@@ -680,9 +817,10 @@ $needsGeneration =
 
 if ($needsGeneration) {
 
-    /* -------------------------------------------------
-       VALIDATE COORDINATES
-       ------------------------------------------------- */
+
+    /* =================================================
+       VALIDATE DESTINATION COORDINATES
+       ================================================= */
 
     if (
         $latitude == 0 ||
@@ -692,7 +830,14 @@ if ($needsGeneration) {
         $placesMessage =
             "Invalid destination coordinates. Please edit the trip and select the destination again.";
 
-        if (!empty($savedItinerary)) {
+        /*
+         * If an old itinerary exists,
+         * display it instead.
+         */
+
+        if (
+            !empty($savedItinerary)
+        ) {
 
             $generatedItinerary =
                 $savedItinerary;
@@ -709,9 +854,10 @@ if ($needsGeneration) {
 
     } else {
 
-        /* -------------------------------------------------
+
+        /* =================================================
            FETCH DYNAMIC PLACES
-           ------------------------------------------------- */
+           ================================================= */
 
         $placesResult =
             getNearbyPlaces(
@@ -727,96 +873,98 @@ if ($needsGeneration) {
            ================================================= */
 
         if (
-            isset($placesResult["success"]) &&
-            $placesResult["success"] === true
+            isset(
+                $placesResult["success"]
+            ) &&
+            $placesResult[
+                "success"
+            ] === true
         ) {
 
             $allPlaces =
-                $placesResult["places"] ?? [];
+                $placesResult[
+                    "places"
+                ] ?? [];
 
 
             /* ---------------------------------------------
-               ACTUAL DISCOVERED PLACE COUNT
+               DISCOVERED PLACE COUNT
                --------------------------------------------- */
 
             $placesDiscoveredCount =
-                count($allPlaces);
+                count(
+                    $allPlaces
+                );
 
 
             /* ---------------------------------------------
                RECOMMEND PLACES
                --------------------------------------------- */
 
-            if (!empty($allPlaces)) {
+            if (
+                !empty($allPlaces)
+            ) {
 
                 $recommendedPlaces =
                     recommendPlaces(
                         $allPlaces,
-                        $trip["interests"] ?? "",
+                        $trip[
+                            "interests"
+                        ] ?? "",
                         $number_of_days
-                    );
-
-                /*
-                 * Final hard duplicate cleanup after the
-                 * recommendation engine.
-                 */
-                $recommendedPlaces =
-                    wanderItineraryUniquePlaces(
-                        $recommendedPlaces
                     );
             }
 
 
             /* ---------------------------------------------
                FIND ACCOMMODATION
-               ---------------------------------------------
-
-               If the trip already has a saved accommodation
-               with valid coordinates, keep it. Otherwise
-               select the first dynamically discovered
-               accommodation.
                --------------------------------------------- */
 
-            if (
-                is_array($savedAccommodation) &&
-                isset($savedAccommodation["latitude"], $savedAccommodation["longitude"]) &&
-                is_numeric($savedAccommodation["latitude"]) &&
-                is_numeric($savedAccommodation["longitude"]) &&
-                (float)$savedAccommodation["latitude"] != 0 &&
-                (float)$savedAccommodation["longitude"] != 0
+            foreach (
+                $allPlaces as $place
             ) {
 
-                $selectedAccommodation =
-                    $savedAccommodation;
+                if (
+                    isAccommodationPlace(
+                        $place
+                    )
+                ) {
 
-            } else {
+                    $selectedAccommodation =
+                        $place;
 
-                foreach ($allPlaces as $place) {
-
-                    if (
-                        isAccommodationPlace($place)
-                    ) {
-
-                        $selectedAccommodation =
-                            $place;
-
-                        break;
-                    }
+                    break;
                 }
             }
 
 
             /* ---------------------------------------------
-               REMOVE ACCOMMODATION FROM
-               SIGHTSEEING RECOMMENDATIONS
+               FALLBACK TO SAVED ACCOMMODATION
+               --------------------------------------------- */
+
+            if (
+                $selectedAccommodation === null &&
+                $savedAccommodation !== null
+            ) {
+
+                $selectedAccommodation =
+                    $savedAccommodation;
+            }
+
+
+            /* ---------------------------------------------
+               BUILD SIGHTSEEING LIST
                --------------------------------------------- */
 
             foreach (
-                $recommendedPlaces as $place
+                $recommendedPlaces
+                as $place
             ) {
 
                 if (
-                    !isAccommodationPlace($place)
+                    !isAccommodationPlace(
+                        $place
+                    )
                 ) {
 
                     $itineraryPlaces[] =
@@ -825,86 +973,119 @@ if ($needsGeneration) {
             }
 
 
-            /* ---------------------------------------------
-               REMOVE EXACT + NEAR-DUPLICATE PLACES
-               --------------------------------------------- */
+            /* =================================================
+               REMOVE DUPLICATES
+               ================================================= */
 
-            $itineraryPlaces =
-                wanderItineraryUniquePlaces(
-                    $itineraryPlaces
-                );
+            $uniquePlaces = [];
 
+            $seenNames = [];
 
-            /* ---------------------------------------------
-               GENERATE DAY-WISE ITINERARY
-               --------------------------------------------- */
+            foreach (
+                $itineraryPlaces
+                as $place
+            ) {
 
-            if (!empty($itineraryPlaces)) {
-
-                /* ---------------------------------------------
-                   ACCOMMODATION COORDINATES
-                   --------------------------------------------- */
-
-                $accommodationLatitude = null;
-                $accommodationLongitude = null;
+                $currentName =
+                    strtolower(
+                        trim(
+                            $place[
+                                "name"
+                            ] ?? ""
+                        )
+                    );
 
                 if (
-                    is_array($selectedAccommodation) &&
+                    $currentName === ""
+                ) {
+                    continue;
+                }
+
+                if (
                     isset(
-                        $selectedAccommodation["latitude"],
-                        $selectedAccommodation["longitude"]
-                    ) &&
-                    is_numeric($selectedAccommodation["latitude"]) &&
-                    is_numeric($selectedAccommodation["longitude"])
+                        $seenNames[
+                            $currentName
+                        ]
+                    )
+                ) {
+                    continue;
+                }
+
+                $seenNames[
+                    $currentName
+                ] = true;
+
+                $uniquePlaces[] =
+                    $place;
+            }
+
+            $itineraryPlaces =
+                $uniquePlaces;
+
+
+            /* =================================================
+               GENERATE ITINERARY
+               ================================================= */
+
+            if (
+                !empty(
+                    $itineraryPlaces
+                )
+            ) {
+
+                $accommodationLatitude =
+                    null;
+
+                $accommodationLongitude =
+                    null;
+
+
+                if (
+                    $selectedAccommodation !== null
                 ) {
 
-                    $candidateAccommodationLatitude =
-                        (float)$selectedAccommodation["latitude"];
+                    $accommodationLatitude =
+                        $selectedAccommodation[
+                            "latitude"
+                        ] ?? null;
 
-                    $candidateAccommodationLongitude =
-                        (float)$selectedAccommodation["longitude"];
-
-                    if (
-                        $candidateAccommodationLatitude != 0 &&
-                        $candidateAccommodationLongitude != 0
-                    ) {
-
-                        $accommodationLatitude =
-                            $candidateAccommodationLatitude;
-
-                        $accommodationLongitude =
-                            $candidateAccommodationLongitude;
-                    }
+                    $accommodationLongitude =
+                        $selectedAccommodation[
+                            "longitude"
+                        ] ?? null;
                 }
 
 
-                /* ---------------------------------------------
-                   GENERATE ITINERARY
-
-                   The accommodation coordinates are passed to
-                   the generator so every day can begin from
-                   the user's selected stay instead of always
-                   beginning from the destination centroid.
-                   --------------------------------------------- */
-
                 $generatedItinerary =
                     generateItinerary(
+
                         $itineraryPlaces,
+
                         $number_of_days,
-                        $trip["transport_preference"] ?? "",
+
+                        $transportRaw,
+
                         $latitude,
+
                         $longitude,
+
                         $accommodationLatitude,
+
                         $accommodationLongitude
                     );
             }
 
 
-            /* ---------------------------------------------
-               SAVE ITINERARY
-               --------------------------------------------- */
+            /* =================================================
+               SAVE GENERATED ITINERARY
+               ================================================= */
 
-            if (!empty($generatedItinerary)) {
+            if (
+                !empty(
+                    $generatedItinerary
+                )
+            ) {
+
 
                 /* Save accommodation */
 
@@ -919,9 +1100,13 @@ if ($needsGeneration) {
                 }
 
 
-                /* Save recommended places */
+                /* Save selected places */
 
-                if (!empty($itineraryPlaces)) {
+                if (
+                    !empty(
+                        $itineraryPlaces
+                    )
+                ) {
 
                     $generatedItinerary[
                         "_recommended_places"
@@ -950,7 +1135,9 @@ if ($needsGeneration) {
 
                 /* Save to database */
 
-                if ($itineraryJson !== false) {
+                if (
+                    $itineraryJson !== false
+                ) {
 
                     $saveStmt =
                         $conn->prepare(
@@ -960,7 +1147,10 @@ if ($needsGeneration) {
                              AND user_id = ?"
                         );
 
-                    if ($saveStmt) {
+
+                    if (
+                        $saveStmt
+                    ) {
 
                         $saveStmt->bind_param(
                             "sii",
@@ -976,7 +1166,7 @@ if ($needsGeneration) {
                 }
 
 
-                /* Remove metadata before displaying */
+                /* Remove metadata before display */
 
                 unset(
                     $generatedItinerary[
@@ -1000,21 +1190,27 @@ if ($needsGeneration) {
 
         } else {
 
+
             /* =================================================
                API FAILURE
                ================================================= */
 
             $placesMessage =
-                $placesResult["message"]
-                ??
+                $placesResult[
+                    "message"
+                ] ??
                 "Unable to fetch fresh places right now.";
 
 
             /*
-             * Keep the previous itinerary.
+             * Use previous itinerary if available.
              */
 
-            if (!empty($savedItinerary)) {
+            if (
+                !empty(
+                    $savedItinerary
+                )
+            ) {
 
                 $generatedItinerary =
                     $savedItinerary;
@@ -1028,7 +1224,6 @@ if ($needsGeneration) {
                 $placesDiscoveredCount =
                     $savedPlacesCount;
 
-
                 $placesMessage =
                     "Fresh place data is temporarily unavailable. Your previously saved itinerary is being displayed.";
             }
@@ -1037,6 +1232,7 @@ if ($needsGeneration) {
 
 
 } else {
+
 
     /* =====================================================
        USE SAVED ITINERARY
@@ -1057,21 +1253,6 @@ if ($needsGeneration) {
 
 
 /* =====================================================
-   FINAL CLEANUP OF THE PLACE LIST
-   ===================================================== */
-
-$recommendedPlaces =
-    wanderItineraryUniquePlaces(
-        $recommendedPlaces
-    );
-
-$itineraryPlaces =
-    wanderItineraryUniquePlaces(
-        $itineraryPlaces
-    );
-
-
-/* =====================================================
    FALLBACK - EXTRACT PLACES FROM ITINERARY
    ===================================================== */
 
@@ -1080,59 +1261,81 @@ if (
     !empty($generatedItinerary)
 ) {
 
+    $seenNames = [];
+
     foreach (
-        $generatedItinerary as $dayData
+        $generatedItinerary
+        as $dayData
     ) {
 
         if (
             !is_array($dayData) ||
-            !isset($dayData["places"]) ||
-            !is_array($dayData["places"])
+            !isset(
+                $dayData["day"]
+            ) ||
+            !isset(
+                $dayData["places"]
+            ) ||
+            !is_array(
+                $dayData["places"]
+            )
         ) {
             continue;
         }
 
 
         foreach (
-            $dayData["places"] as $place
+            $dayData["places"]
+            as $place
         ) {
 
-            $alreadyExists = false;
+            /*
+             * Do not show lunch as a recommendation.
+             */
+
+            if (
+                !empty(
+                    $place["is_break"]
+                )
+            ) {
+                continue;
+            }
+
 
             $placeName =
                 strtolower(
                     trim(
-                        $place["name"] ?? ""
+                        $place[
+                            "name"
+                        ] ?? ""
                     )
                 );
 
-            foreach (
-                $itineraryPlaces as $existingPlace
+            if (
+                $placeName === ""
             ) {
-
-                $existingName =
-                    strtolower(
-                        trim(
-                            $existingPlace["name"] ?? ""
-                        )
-                    );
-
-                if (
-                    $placeName !== "" &&
-                    $placeName === $existingName
-                ) {
-
-                    $alreadyExists = true;
-                    break;
-                }
+                continue;
             }
 
 
-            if (!$alreadyExists) {
-
-                $itineraryPlaces[] =
-                    $place;
+            if (
+                isset(
+                    $seenNames[
+                        $placeName
+                    ]
+                )
+            ) {
+                continue;
             }
+
+
+            $seenNames[
+                $placeName
+            ] = true;
+
+
+            $itineraryPlaces[] =
+                $place;
         }
     }
 }
@@ -1148,7 +1351,9 @@ if (
 ) {
 
     $placesDiscoveredCount =
-        count($itineraryPlaces);
+        count(
+            $itineraryPlaces
+        );
 }
 
 
@@ -1174,7 +1379,9 @@ $page_title =
     >
 
     <title>
-        <?php echo $page_title; ?>
+        <?php
+        echo $page_title;
+        ?>
     </title>
 
     <link
@@ -1235,19 +1442,30 @@ $page_title =
         <div class="user-avatar">
 
             <?php
+
+            $avatarName =
+                $_SESSION[
+                    "username"
+                ] ?? "U";
+
             echo strtoupper(
                 substr(
-                    $_SESSION["username"] ?? "U",
+                    $avatarName,
                     0,
                     1
                 )
             );
+
             ?>
 
         </div>
 
         <span class="user-name">
-            <?php echo $username; ?>
+
+            <?php
+            echo $username;
+            ?>
+
         </span>
 
         <a
@@ -1282,7 +1500,9 @@ $page_title =
             Your Trip to
 
             <span>
-                <?php echo $destination; ?>
+                <?php
+                echo $destination;
+                ?>
             </span>
 
             ✈️
@@ -1305,6 +1525,12 @@ $page_title =
             class="itinerary-action-btn edit-trip-action"
         >
             ✏️ Edit Trip
+        </a>
+        <a
+            href="budget.php?trip_id=<?php echo $trip_id; ?>"
+            class="itinerary-action-btn"
+>
+            💰 Trip Budget
         </a>
 
 
@@ -1348,7 +1574,9 @@ $page_title =
             </span>
 
             <strong>
-                <?php echo $destination; ?>
+                <?php
+                echo $destination;
+                ?>
             </strong>
 
         </div>
@@ -1369,7 +1597,11 @@ $page_title =
             </span>
 
             <strong>
-                <?php echo $start_date; ?>
+                <?php
+                echo htmlspecialchars(
+                    $start_date
+                );
+                ?>
             </strong>
 
         </div>
@@ -1390,7 +1622,10 @@ $page_title =
             </span>
 
             <strong>
-                <?php echo $number_of_days; ?> Days
+                <?php
+                echo $number_of_days;
+                ?>
+                Days
             </strong>
 
         </div>
@@ -1411,7 +1646,9 @@ $page_title =
             </span>
 
             <strong>
-                ₹<?php echo $budget; ?>
+                ₹<?php
+                echo $budget;
+                ?>
             </strong>
 
         </div>
@@ -1432,7 +1669,9 @@ $page_title =
             </span>
 
             <strong>
-                <?php echo $travelers; ?>
+                <?php
+                echo $travelers;
+                ?>
             </strong>
 
         </div>
@@ -1517,7 +1756,9 @@ $page_title =
         <p>
             WanderAI discovered places near your
             destination, matched them with your interests
-            and arranged them into a day-wise schedule.
+            and arranged them into a dynamic day-wise
+            schedule using travel distance, estimated
+            visit duration and opening hours.
         </p>
 
     </div>
@@ -1540,15 +1781,21 @@ $page_title =
     </h2>
 
 
-    <?php if ($selectedAccommodation !== null): ?>
+    <?php if (
+        $selectedAccommodation !== null
+    ): ?>
 
         <?php
 
         $accommodationLatitude =
-            $selectedAccommodation["latitude"] ?? "";
+            $selectedAccommodation[
+                "latitude"
+            ] ?? "";
 
         $accommodationLongitude =
-            $selectedAccommodation["longitude"] ?? "";
+            $selectedAccommodation[
+                "longitude"
+            ] ?? "";
 
         $accommodationMapQuery =
             urlencode(
@@ -1559,13 +1806,11 @@ $page_title =
 
         ?>
 
-
         <div class="accommodation-card">
 
             <div class="accommodation-icon">
                 🏨
             </div>
-
 
             <div>
 
@@ -1573,30 +1818,30 @@ $page_title =
 
                     <?php
                     echo htmlspecialchars(
-                        $selectedAccommodation["name"]
-                        ?? "Accommodation"
+                        $selectedAccommodation[
+                            "name"
+                        ] ?? "Accommodation"
                     );
                     ?>
 
                 </h2>
 
-
                 <p>
 
                     This accommodation is selected as
                     your stay for the complete
-                    <?php echo $number_of_days; ?>-day trip.
+                    <?php
+                    echo $number_of_days;
+                    ?>
+                    -day trip.
 
                 </p>
-
 
                 <span class="place-category">
                     Accommodation
                 </span>
 
-
                 <br><br>
-
 
                 <a
                     class="timeline-map"
@@ -1611,9 +1856,7 @@ $page_title =
 
         </div>
 
-
     <?php else: ?>
-
 
         <div class="ai-itinerary-card">
 
@@ -1636,7 +1879,6 @@ $page_title =
 
         </div>
 
-
     <?php endif; ?>
 
 </section>
@@ -1657,7 +1899,9 @@ $page_title =
     </h2>
 
 
-    <?php if (!empty($placesMessage)): ?>
+    <?php if (
+        !empty($placesMessage)
+    ): ?>
 
         <div class="message error">
 
@@ -1669,9 +1913,12 @@ $page_title =
 
         </div>
 
+    <?php endif; ?>
 
-    <?php elseif (empty($itineraryPlaces)): ?>
 
+    <?php if (
+        empty($itineraryPlaces)
+    ): ?>
 
         <div class="ai-itinerary-card">
 
@@ -1694,15 +1941,15 @@ $page_title =
 
         </div>
 
-
     <?php else: ?>
-
 
         <p class="places-count">
 
             🌍
 
-            <?php echo $placesDiscoveredCount; ?>
+            <?php
+            echo $placesDiscoveredCount;
+            ?>
 
             places discovered
 
@@ -1710,7 +1957,11 @@ $page_title =
 
             ⭐
 
-            <?php echo count($itineraryPlaces); ?>
+            <?php
+            echo count(
+                $itineraryPlaces
+            );
+            ?>
 
             places selected for your itinerary
 
@@ -1721,20 +1972,31 @@ $page_title =
 
 
             <?php foreach (
-                $itineraryPlaces as $place
+                $itineraryPlaces
+                as $place
             ): ?>
-
 
                 <?php
 
+                if (
+                    !is_array($place) ||
+                    !empty(
+                        $place["is_break"]
+                    )
+                ) {
+                    continue;
+                }
+
                 $displayCategory =
-                    getDisplayCategory($place);
+                    getDisplayCategory(
+                        $place
+                    );
 
                 ?>
 
-
-                <div class="recommended-place-card">
-
+                <div
+                    class="recommended-place-card"
+                >
 
                     <h3>
 
@@ -1742,8 +2004,10 @@ $page_title =
 
                         <?php
                         echo htmlspecialchars(
-                            $place["name"]
-                            ?? "Unnamed Place"
+                            $place[
+                                "name"
+                            ] ??
+                            "Unnamed Place"
                         );
                         ?>
 
@@ -1771,8 +2035,7 @@ $page_title =
                             echo (int)(
                                 $place[
                                     "recommendation_score"
-                                ]
-                                ?? 0
+                                ] ?? 0
                             );
                             ?>
 
@@ -1783,7 +2046,9 @@ $page_title =
 
                     <?php if (
                         !empty(
-                            $place["opening_hours"]
+                            $place[
+                                "opening_hours"
+                            ]
                         )
                     ): ?>
 
@@ -1793,7 +2058,9 @@ $page_title =
 
                             <?php
                             echo htmlspecialchars(
-                                $place["opening_hours"]
+                                $place[
+                                    "opening_hours"
+                                ]
                             );
                             ?>
 
@@ -1802,14 +2069,33 @@ $page_title =
                     <?php endif; ?>
 
 
-                </div>
+                    <?php if (
+                        !empty(
+                            $place[
+                                "description"
+                            ]
+                        )
+                    ): ?>
 
+                        <p>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $place[
+                                    "description"
+                                ]
+                            );
+                            ?>
+
+                        </p>
+
+                    <?php endif; ?>
+
+                </div>
 
             <?php endforeach; ?>
 
-
         </div>
-
 
     <?php endif; ?>
 
@@ -1832,14 +2118,15 @@ $page_title =
 
     <p>
         Places are arranged dynamically using estimated
-        distance, visit duration and your preferred
-        transport. Your selected accommodation remains
-        the same for the entire trip.
+        distance, travel time, visit duration and opening
+        hours. Your selected accommodation is used as
+        the daily base whenever coordinates are available.
     </p>
 
 
-    <?php if (empty($generatedItinerary)): ?>
-
+    <?php if (
+        empty($generatedItinerary)
+    ): ?>
 
         <div class="ai-itinerary-card">
 
@@ -1862,38 +2149,51 @@ $page_title =
 
         </div>
 
-
     <?php else: ?>
 
 
         <?php foreach (
-            $generatedItinerary as $dayData
+            $generatedItinerary
+            as $dayData
         ): ?>
 
 
             <?php
 
+            /*
+             * Only actual day objects are displayed.
+             */
+
             if (
-                !isset($dayData["day"]) ||
-                !isset($dayData["places"]) ||
-                !is_array($dayData["places"])
+                !is_array($dayData) ||
+                !isset(
+                    $dayData["day"]
+                ) ||
+                !isset(
+                    $dayData["places"]
+                ) ||
+                !is_array(
+                    $dayData["places"]
+                )
             ) {
                 continue;
             }
 
             ?>
 
-
             <div class="day-card">
 
 
                 <div class="day-title">
 
-
                     <div class="day-number">
 
                         <?php
-                        echo (int)$dayData["day"];
+                        echo (int)(
+                            $dayData[
+                                "day"
+                            ]
+                        );
                         ?>
 
                     </div>
@@ -1904,18 +2204,20 @@ $page_title =
                         <h2>
 
                             Day
+
                             <?php
-                            echo (int)$dayData["day"];
+                            echo (int)(
+                                $dayData[
+                                    "day"
+                                ]
+                            );
                             ?>
 
                         </h2>
 
-
                         <p>
-
                             Personalized schedule based on
                             recommended places.
-
                         </p>
 
                     </div>
@@ -1924,13 +2226,20 @@ $page_title =
 
 
                 <?php if (
-                    empty($dayData["places"])
+                    empty(
+                        $dayData[
+                            "places"
+                        ]
+                    )
                 ): ?>
 
+                    <div
+                        class="ai-itinerary-card"
+                    >
 
-                    <div class="ai-itinerary-card">
-
-                        <div class="ai-itinerary-icon">
+                        <div
+                            class="ai-itinerary-icon"
+                        >
                             🌿
                         </div>
 
@@ -1958,20 +2267,33 @@ $page_title =
 
 
                         <?php foreach (
-                            $dayData["places"]
-                            as $schedulePlace
+                            $dayData[
+                                "places"
+                            ] as $schedulePlace
                         ): ?>
 
 
                             <?php
 
+                            if (
+                                !is_array(
+                                    $schedulePlace
+                                )
+                            ) {
+                                continue;
+                            }
+
+
                             $mapLatitude =
-                                $schedulePlace["latitude"]
-                                ?? "";
+                                $schedulePlace[
+                                    "latitude"
+                                ] ?? "";
 
                             $mapLongitude =
-                                $schedulePlace["longitude"]
-                                ?? "";
+                                $schedulePlace[
+                                    "longitude"
+                                ] ?? "";
+
 
                             $mapQuery =
                                 urlencode(
@@ -1980,15 +2302,28 @@ $page_title =
                                     $mapLongitude
                                 );
 
+
+                            $isBreak =
+                                !empty(
+                                    $schedulePlace[
+                                        "is_break"
+                                    ]
+                                );
+
+
                             $scheduleCategory =
-                                getDisplayCategory(
+                                $isBreak
+                                ? "Food"
+                                : getDisplayCategory(
                                     $schedulePlace
                                 );
 
                             ?>
 
 
-                            <div class="timeline-item">
+                            <div
+                                class="timeline-item <?php echo $isBreak ? 'timeline-break' : ''; ?>"
+                            >
 
 
                                 <div class="timeline-dot">
@@ -2003,8 +2338,7 @@ $page_title =
                                     echo htmlspecialchars(
                                         $schedulePlace[
                                             "start_time"
-                                        ]
-                                        ?? ""
+                                        ] ?? ""
                                     );
                                     ?>
 
@@ -2014,9 +2348,8 @@ $page_title =
                                     echo htmlspecialchars(
                                         $schedulePlace[
                                             "end_time"
-                                        ]
-                                        ?? ""
-                                    ); 
+                                        ] ?? ""
+                                    );
                                     ?>
 
                                 </div>
@@ -2024,21 +2357,27 @@ $page_title =
 
                                 <div class="timeline-place">
 
-                                    📍
+                                    <?php
+                                    echo $isBreak
+                                        ? "🍴"
+                                        : "📍";
+                                    ?>
 
                                     <?php
                                     echo htmlspecialchars(
                                         $schedulePlace[
                                             "name"
-                                        ]
-                                        ?? "Unnamed Place"
+                                        ] ??
+                                        "Unnamed Place"
                                     );
                                     ?>
 
                                 </div>
 
 
-                                <span class="timeline-category">
+                                <span
+                                    class="timeline-category"
+                                >
 
                                     <?php
                                     echo htmlspecialchars(
@@ -2049,95 +2388,104 @@ $page_title =
                                 </span>
 
 
-                                <div class="timeline-details">
-
-
-                                    ⏱️ Visit:
-
-                                    <?php
-                                    echo (int)(
-                                        $schedulePlace[
-                                            "visit_minutes"
-                                        ]
-                                        ?? 0
-                                    );
-                                    ?>
-
-                                    minutes
-
-
-                                    <br>
-
-
-                                    🚗 Estimated travel:
-
-                                    <?php
-                                    echo (int)(
-                                        $schedulePlace[
-                                            "travel_minutes"
-                                        ]
-                                        ?? 0
-                                    );
-                                    ?>
-
-                                    minutes
-
-
-                                    <br>
-
-
-                                    📏 Distance:
-
-                                    <?php
-                                    echo htmlspecialchars(
-                                        $schedulePlace[
-                                            "distance_km"
-                                        ]
-                                        ?? 0
-                                    );
-                                    ?>
-
-                                    km
-
+                                <div
+                                    class="timeline-details"
+                                >
 
                                     <?php if (
-                                        !empty(
-                                            $schedulePlace[
-                                                "opening_hours"
-                                            ]
-                                        )
+                                        $isBreak
                                     ): ?>
 
+                                        🍴 Lunch break
+
+                                    <?php else: ?>
+
+                                        ⏱️ Visit:
+
+                                        <?php
+                                        echo (int)(
+                                            $schedulePlace[
+                                                "visit_minutes"
+                                            ] ?? 0
+                                        );
+                                        ?>
+
+                                        minutes
 
                                         <br>
 
-                                        🕐 Opening hours:
+                                        🚗 Estimated travel:
+
+                                        <?php
+                                        echo (int)(
+                                            $schedulePlace[
+                                                "travel_minutes"
+                                            ] ?? 0
+                                        );
+                                        ?>
+
+                                        minutes
+
+                                        <br>
+
+                                        📏 Distance:
 
                                         <?php
                                         echo htmlspecialchars(
                                             $schedulePlace[
-                                                "opening_hours"
-                                            ]
+                                                "distance_km"
+                                            ] ?? 0
                                         );
                                         ?>
 
+                                        km
+
+
+                                        <?php if (
+                                            !empty(
+                                                $schedulePlace[
+                                                    "opening_hours"
+                                                ]
+                                            )
+                                        ): ?>
+
+                                            <br>
+
+                                            🕐 Opening hours:
+
+                                            <?php
+                                            echo htmlspecialchars(
+                                                $schedulePlace[
+                                                    "opening_hours"
+                                                ]
+                                            );
+                                            ?>
+
+                                        <?php endif; ?>
 
                                     <?php endif; ?>
-
 
                                 </div>
 
 
-                                <a
-                                    class="timeline-map"
-                                    href="https://www.google.com/maps/search/?api=1&query=<?php echo $mapQuery; ?>"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
+                                <?php if (
+                                    !$isBreak &&
+                                    $mapLatitude !== "" &&
+                                    $mapLongitude !== ""
+                                ): ?>
 
-                                    🗺️ Open in Google Maps
+                                    <a
+                                        class="timeline-map"
+                                        href="https://www.google.com/maps/search/?api=1&query=<?php echo $mapQuery; ?>"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
 
-                                </a>
+                                        🗺️ Open in Google Maps
+
+                                    </a>
+
+                                <?php endif; ?>
 
 
                             </div>
@@ -2195,4 +2543,5 @@ $page_title =
 
 
 </body>
+
 </html>
