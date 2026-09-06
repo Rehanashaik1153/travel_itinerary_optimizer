@@ -3692,3 +3692,40 @@ textarea {
     }
 
 }
+
+/* =====================================================
+   SHARED BUDGET / STATUS ALERTS
+   (used on itinerary.php and budget.php)
+   ===================================================== */
+
+.budget-alert {
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.budget-alert-error {
+    background: #fdecea;
+    color: #b3261e;
+    border: 1px solid #f5c2c0;
+}
+
+.budget-alert-success {
+    background: #e7f7ee;
+    color: #1e7a44;
+    border: 1px solid #b9e6cc;
+}
+
+.budget-alert-nudge {
+    background: #eef4ff;
+    color: #1d3f8a;
+    border: 1px solid #c6d7fb;
+    font-weight: 500;
+}
+
+.budget-alert-nudge a {
+    color: #1d3f8a;
+    font-weight: 700;
+    text-decoration: underline;
+}

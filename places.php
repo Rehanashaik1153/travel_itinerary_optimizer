@@ -68,11 +68,16 @@ function getNearbyPlaces(
 
     /*
        Broad destinations such as Kerala, India need a larger
-       dynamic search radius than a normal city destination.
+       dynamic search radius than a normal city destination -
+       but a huge radius combined with every category at once
+       is exactly what overloads the free public Overpass
+       mirrors (504 Gateway Timeout). Keep broad radius smaller
+       than before and rely on the lighter query variant below
+       for these.
     */
 
     if ($isBroadDestination) {
-        $radius = max($radius, 50000);
+        $radius = max($radius, 30000);
     }
 
 
@@ -94,130 +99,172 @@ function getNearbyPlaces(
 
 
     /* =============================================
-       QUERY 1 - TOURIST / PLACES
+       LOCAL RESULT CACHE
+       =============================================
+
+       Overpass calls are the slowest part of itinerary
+       generation. Cache the raw response per destination
+       area for a few hours so re-generating (or the
+       "Regenerate" button) does not re-hit the network
+       every time.
        ============================================= */
 
-    $placesQuery = '
-[out:json][timeout:20];
+    $cacheDir = __DIR__ . "/cache/places";
 
-(
-    /* Tourist attractions */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism~"attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium"];
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0777, true);
+    }
 
-    /* Historical places */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[historic];
+    $cacheKey = sprintf(
+        "%s_%.3f_%.3f_%d",
+        $isBroadDestination ? "broad" : "local",
+        round($latitude, 3),
+        round($longitude, 3),
+        $radius
+    );
 
-    /* Religious places */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[amenity=place_of_worship];
+    $cacheFile =
+        $cacheDir . "/" . md5($cacheKey) . ".json";
 
-    /* Parks and gardens */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[leisure~"park|garden"];
+    $cacheMaxAgeSeconds = 6 * 60 * 60; // 6 hours
 
-    /* Nature */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[natural~"beach|peak|waterfall|spring|cliff|valley|wood|forest"];
+    if (
+        is_file($cacheFile) &&
+        (time() - filemtime($cacheFile)) < $cacheMaxAgeSeconds
+    ) {
 
-    /* Food */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[amenity~"restaurant|cafe|fast_food|food_court"];
+        $cached = json_decode(
+            file_get_contents($cacheFile),
+            true
+        );
 
-    /* Entertainment */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[amenity~"cinema|theatre|arts_centre"];
+        if (is_array($cached) && isset($cached["elements"])) {
 
-    /* Shopping */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[shop~"mall|department_store|market|supermarket|souvenir|gift"];
+            $elements = $cached["elements"];
 
-    /* Water / amusement */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[leisure~"water_park|amusement_arcade"];
+            $placesResponse = ["success" => true];
+            $accommodationResponse = ["success" => true];
 
-);
-
-out center tags;
-';
+            goto placesCacheHit;
+        }
+    }
 
 
     /* =============================================
-       QUERY 2 - ACCOMMODATION
+       QUERY BUILDER - PLACES + ACCOMMODATION
+       =============================================
+
+       Previously this ran two separate Overpass requests
+       (places, then accommodation), each retried across
+       four mirror servers *sequentially*. Worst case that
+       is 8 slow/blocked network attempts in a row.
+
+       It is now ONE combined request, and it comes in two
+       sizes:
+
+       - "full"  : every category (used for normal city-size
+                   searches, which the public mirrors handle
+                   fine).
+       - "light" : fewer, higher-value categories (used for
+                   broad state/country searches, or as an
+                   automatic retry when the full query times
+                   out / gets a 504 - large radius + every
+                   category at once is what overloads the
+                   free public mirrors).
        ============================================= */
 
-    $accommodationQuery = '
-[out:json][timeout:20];
+    $buildOverpassQuery = function (
+        $radius,
+        $latitude,
+        $longitude,
+        $light = false
+    ) {
 
-(
-    /* Hotels */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=hotel];
+        $timeoutSeconds = $light ? 20 : 25;
 
-    /* Hostels */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=hostel];
+        $clauses = [];
 
-    /* Guest houses */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=guest_house];
+        $clauses[] =
+            'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')'
+            . '[tourism~"attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium"];';
 
-    /* Motels */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=motel];
+        $clauses[] =
+            'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[historic];';
 
-    /* Resorts */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=resort];
+        $clauses[] =
+            'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[amenity=place_of_worship];';
 
-    /* Apartments */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=apartment];
+        $clauses[] =
+            'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[natural~"beach|peak|waterfall|spring|cliff|valley|wood|forest"];';
 
-    /* Chalets */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=chalet];
+        if (!$light) {
+            $clauses[] =
+                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[leisure~"park|garden"];';
 
-    /* Campsites */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=camp_site];
+            $clauses[] =
+                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[amenity~"restaurant|cafe|fast_food|food_court"];';
 
-    /* Alpine huts / lodges */
-    nwr(
-        around:' . $radius . ',' . $latitude . ',' . $longitude . '
-    )[tourism=alpine_hut];
+            $clauses[] =
+                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[amenity~"cinema|theatre|arts_centre"];';
 
-);
+            $clauses[] =
+                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[shop~"mall|department_store|market|supermarket|souvenir|gift"];';
 
-out center tags;
-';
+            $clauses[] =
+                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[leisure~"water_park|amusement_arcade"];';
+        }
+
+        /* Accommodation - always included, every category. */
+
+        $accommodationTypes = $light
+            ? ["hotel", "resort", "guest_house"]
+            : ["hotel", "hostel", "guest_house", "motel", "resort", "apartment", "chalet", "camp_site", "alpine_hut"];
+
+        foreach ($accommodationTypes as $type) {
+            $clauses[] =
+                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[tourism=' . $type . '];';
+        }
+
+        return
+            "[out:json][timeout:" . $timeoutSeconds . "];\n(\n" .
+            implode("\n", $clauses) .
+            "\n);\nout center tags;\n";
+    };
+
+
+    $combinedQuery = $buildOverpassQuery(
+        $radius,
+        $latitude,
+        $longitude,
+        $isBroadDestination
+    );
 
 
     /* =============================================
-       FETCH FROM OVERPASS
+       FETCH FROM OVERPASS - ALL MIRRORS IN PARALLEL
+       =============================================
+
+       The old version tried each of the 4 mirror servers
+       one after another, each allowed up to 25s + 8s
+       connect timeout. If the first couple of mirrors were
+       slow, blocked, or unreachable (very common on shared
+       college wifi / campus networks / some local XAMPP
+       setups), the request could sit there for over a
+       minute before finally failing - matching the "takes
+       forever and still gives nothing" symptom.
+
+       Firing all mirrors at once with curl_multi and
+       returning as soon as ONE succeeds means the real
+       wait time is roughly "however long the fastest mirror
+       takes", capped by a short timeout, instead of the sum
+       of every mirror's timeout.
        ============================================= */
 
-    $fetchOverpass = function($query, $servers) {
+    $fetchOverpassParallel = function ($query, $servers) {
 
-        $serverErrors = [];
+        $multiHandle = curl_multi_init();
+
+        $channels = [];
 
         foreach ($servers as $url) {
 
@@ -235,9 +282,9 @@ out center tags;
 
                 CURLOPT_RETURNTRANSFER => true,
 
-                CURLOPT_TIMEOUT => 25,
+                CURLOPT_TIMEOUT => 18,
 
-                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_CONNECTTIMEOUT => 6,
 
                 CURLOPT_FOLLOWLOCATION => true,
 
@@ -253,142 +300,272 @@ out center tags;
 
             ]);
 
+            curl_multi_add_handle($multiHandle, $ch);
 
-            $result = curl_exec($ch);
-
-            $httpCode = curl_getinfo(
-                $ch,
-                CURLINFO_HTTP_CODE
-            );
-
-            $curlError = curl_error($ch);
-
-            curl_close($ch);
-
-
-            /* Successful response */
-
-            if (
-                $result !== false &&
-                $httpCode >= 200 &&
-                $httpCode < 300
-            ) {
-
-                $decoded = json_decode(
-                    $result,
-                    true
-                );
-
-                if (
-                    is_array($decoded) &&
-                    isset($decoded["elements"]) &&
-                    is_array($decoded["elements"])
-                ) {
-
-                    return [
-                        "success" => true,
-                        "elements" => $decoded["elements"]
-                    ];
-
-                }
-
-            }
-
-
-            /* Store error */
-
-            $errorMessage =
-                $url .
-                " - HTTP " .
-                $httpCode;
-
-            if (!empty($curlError)) {
-
-                $errorMessage .=
-                    ". " .
-                    $curlError;
-
-            }
-
-            $serverErrors[] = $errorMessage;
-
+            $channels[(int)$ch] = [
+                "handle" => $ch,
+                "url" => $url
+            ];
         }
 
 
+        $serverErrors = [];
+
+        $running = null;
+
+        /* Kick off all requests. */
+
+        do {
+
+            $status = curl_multi_exec(
+                $multiHandle,
+                $running
+            );
+
+        } while ($status === CURLM_CALL_MULTI_PERFORM);
+
+
+        /* Hard cap: never wait more than ~20s in total,
+           no matter how many mirrors are unresponsive. */
+
+        $deadline = microtime(true) + 20;
+
+        while (
+            $running > 0 &&
+            microtime(true) < $deadline
+        ) {
+
+            curl_multi_select($multiHandle, 1.0);
+
+            do {
+
+                $status = curl_multi_exec(
+                    $multiHandle,
+                    $running
+                );
+
+            } while ($status === CURLM_CALL_MULTI_PERFORM);
+
+
+            /* As soon as any handle finishes, check it. */
+
+            while (
+                $info = curl_multi_info_read($multiHandle)
+            ) {
+
+                $ch = $info["handle"];
+
+                $meta = $channels[(int)$ch]
+                    ?? ["url" => "unknown"];
+
+                $httpCode = curl_getinfo(
+                    $ch,
+                    CURLINFO_HTTP_CODE
+                );
+
+                $curlError = curl_error($ch);
+
+                $result = curl_multi_getcontent($ch);
+
+
+                if (
+                    $result !== false &&
+                    $result !== null &&
+                    $httpCode >= 200 &&
+                    $httpCode < 300
+                ) {
+
+                    $decoded = json_decode(
+                        $result,
+                        true
+                    );
+
+                    if (
+                        is_array($decoded) &&
+                        isset($decoded["elements"]) &&
+                        is_array($decoded["elements"])
+                    ) {
+
+                        /* Success! Clean up every handle
+                           and return immediately without
+                           waiting for the slower mirrors. */
+
+                        foreach ($channels as $c) {
+                            curl_multi_remove_handle(
+                                $multiHandle,
+                                $c["handle"]
+                            );
+                            curl_close($c["handle"]);
+                        }
+
+                        curl_multi_close($multiHandle);
+
+                        return [
+                            "success" => true,
+                            "elements" => $decoded["elements"]
+                        ];
+                    }
+                }
+
+
+                $errorMessage =
+                    $meta["url"] .
+                    " - HTTP " .
+                    $httpCode;
+
+                if (!empty($curlError)) {
+                    $errorMessage .= ". " . $curlError;
+                }
+
+                $serverErrors[] = $errorMessage;
+
+                curl_multi_remove_handle(
+                    $multiHandle,
+                    $ch
+                );
+
+                curl_close($ch);
+
+                unset($channels[(int)$ch]);
+            }
+        }
+
+
+        /* Timed out or every mirror failed - clean up
+           whatever is left. */
+
+        foreach ($channels as $c) {
+            curl_multi_remove_handle(
+                $multiHandle,
+                $c["handle"]
+            );
+            curl_close($c["handle"]);
+        }
+
+        curl_multi_close($multiHandle);
+
         return [
-
             "success" => false,
-
             "elements" => [],
-
             "errors" => $serverErrors
-
         ];
-
     };
 
 
     /* =============================================
-       FETCH TOURIST PLACES
+       FETCH PLACES + ACCOMMODATION
+       =============================================
+
+       Try the appropriately-sized query first. If every
+       mirror fails (504 / timeout / DNS issue - all seen in
+       the wild with these free public servers), automatically
+       retry once with the smaller "light" query, which is
+       far less likely to make an already-struggling server
+       time out again.
        ============================================= */
 
-    $placesResponse = $fetchOverpass(
-        $placesQuery,
+    $combinedResponse = $fetchOverpassParallel(
+        $combinedQuery,
         $servers
     );
 
+    if (!$combinedResponse["success"] && !$isBroadDestination) {
 
-    /* =============================================
-       FETCH ACCOMMODATION SEPARATELY
-       ============================================= */
+        $lightQuery = $buildOverpassQuery(
+            $radius,
+            $latitude,
+            $longitude,
+            true
+        );
 
-    $accommodationResponse = $fetchOverpass(
-        $accommodationQuery,
-        $servers
-    );
+        $retryResponse = $fetchOverpassParallel(
+            $lightQuery,
+            $servers
+        );
+
+        if ($retryResponse["success"]) {
+            $combinedResponse = $retryResponse;
+        } else {
+            $combinedResponse["errors"] = array_merge(
+                $combinedResponse["errors"] ?? [],
+                $retryResponse["errors"] ?? []
+            );
+        }
+
+    } elseif (!$combinedResponse["success"] && $isBroadDestination) {
+
+        /* Already tried the light query - retry once more
+           with a smaller radius as a last resort. */
+
+        $smallerRadius = max(15000, (int)($radius / 2));
+
+        $fallbackQuery = $buildOverpassQuery(
+            $smallerRadius,
+            $latitude,
+            $longitude,
+            true
+        );
+
+        $retryResponse = $fetchOverpassParallel(
+            $fallbackQuery,
+            $servers
+        );
+
+        if ($retryResponse["success"]) {
+            $combinedResponse = $retryResponse;
+        } else {
+            $combinedResponse["errors"] = array_merge(
+                $combinedResponse["errors"] ?? [],
+                $retryResponse["errors"] ?? []
+            );
+        }
+    }
 
 
     /* =============================================
        CHECK RESULTS
        ============================================= */
 
-    if (
-        !$placesResponse["success"] &&
-        !$accommodationResponse["success"]
-    ) {
-
-        $allErrors = array_merge(
-
-            $placesResponse["errors"] ?? [],
-
-            $accommodationResponse["errors"] ?? []
-
-        );
+    if (!$combinedResponse["success"]) {
 
         return [
 
             "success" => false,
 
             "message" =>
-                "Unable to fetch places and accommodation right now. " .
-                implode(" | ", $allErrors)
+                "Unable to fetch places right now. The public map " .
+                "data servers are temporarily overloaded or " .
+                "unreachable from this network. Please wait a " .
+                "minute and click Regenerate. (" .
+                implode(
+                    " | ",
+                    $combinedResponse["errors"] ?? []
+                ) .
+                ")"
 
         ];
 
     }
 
+    $placesResponse = $combinedResponse;
+
+    $accommodationResponse = $combinedResponse;
+
 
     /* =============================================
-       COMBINE RESULTS
+       RESULTS
        ============================================= */
 
-    $elements = array_merge(
+    $elements = $combinedResponse["elements"] ?? [];
 
-        $placesResponse["elements"] ?? [],
+    /* Save to cache for next time. */
 
-        $accommodationResponse["elements"] ?? []
-
+    @file_put_contents(
+        $cacheFile,
+        json_encode(["elements" => $elements])
     );
+
+    placesCacheHit:
 
 
     /* =============================================

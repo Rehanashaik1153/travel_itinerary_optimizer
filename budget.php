@@ -1,4 +1,3 @@
-```php
 <?php
 /* =====================================================
    WANDERAI - DYNAMIC TRIP BUDGET + ALTERNATIVE OPTIMIZER
@@ -980,7 +979,13 @@ foreach (
                         "place_type"
                     ],
                     "Attraction"
-                )
+                ),
+
+            /* Keep the full place record so a chosen
+               replacement can actually be written back
+               into the saved itinerary later. */
+            "place" =>
+                $place
         ];
 
     } else {
@@ -1002,20 +1007,69 @@ foreach (
                         "place_type"
                     ],
                     "Attraction"
-                )
+                ),
+
+            "place" =>
+                $place
         ];
     }
 }
 
 
 /* =====================================================
-   REPLACE MOST EXPENSIVE PAID ACTIVITY
+   REPLACE PAID ACTIVITIES UNTIL THE TRIP FITS BUDGET
+   =====================================================
+
+   Previously this swapped out only the single most
+   expensive paid attraction, even if that one swap was
+   nowhere near enough to bring the trip back under
+   budget. Now we keep swapping the priciest remaining
+   paid activity for a free/cheap alternative, one at a
+   time, until either:
+
+     - the estimated total fits inside the user's budget, or
+     - we run out of paid activities or free alternatives
+       to swap in.
+
+   This is what actually produces a "replaced itinerary
+   that fits the budget" instead of a single token
+   suggestion.
    ===================================================== */
 
 $activityOptimizedCost =
     $activityCost;
 
 $activityAlternativeNames = [];
+
+$activityReplacements = [];
+
+
+/*
+   Misc is optimized independently below using a fixed
+   formula (200 per traveler), so it can be computed here
+   too in order to know how much of the budget is actually
+   left over for activities.
+*/
+
+$projectedOptimizedMisc =
+    max(
+        200 * $travelers,
+        0
+    );
+
+$fixedOptimizedCost =
+    $optimizedAccommodationCost +
+    $optimizedFoodCost +
+    $optimizedTransportCost +
+    $projectedOptimizedMisc;
+
+$activityBudgetTarget =
+    $userBudget > 0
+        ? max(
+            0,
+            $userBudget - $fixedOptimizedCost
+        )
+        : $activityCost;
 
 
 if (
@@ -1025,56 +1079,97 @@ if (
 
     usort(
         $paidActivities,
-        function($a, $b) {
+        function ($a, $b) {
             return $b["cost"] <=> $a["cost"];
         }
     );
 
+    /* Cheapest free alternatives first, so we don't
+       "spend" a genuinely free place on a swap that a
+       0-cost place would have covered just as well. */
 
-    $paidToReplace =
-        $paidActivities[0];
-
-    $alternativePlace =
-        $freeActivities[0];
-
-
-    $currentActivityPrice =
-        $paidToReplace["cost"];
-
-    $alternativeActivityPrice =
-        $alternativePlace["cost"];
+    usort(
+        $freeActivities,
+        function ($a, $b) {
+            return $a["cost"] <=> $b["cost"];
+        }
+    );
 
 
-    if (
-        $currentActivityPrice >
-        $alternativeActivityPrice
-    ) {
+    $availableFreeActivities = $freeActivities;
+
+
+    foreach ($paidActivities as $paidToReplace) {
+
+        /* Stop once the running total is within budget,
+           or we have no more free alternatives left. */
+
+        if (
+            $userBudget > 0 &&
+            $activityOptimizedCost <= $activityBudgetTarget
+        ) {
+            break;
+        }
+
+        if (empty($availableFreeActivities)) {
+            break;
+        }
+
+        $alternativePlace =
+            array_shift($availableFreeActivities);
+
+        $currentActivityPrice =
+            $paidToReplace["cost"];
+
+        $alternativeActivityPrice =
+            $alternativePlace["cost"];
+
+        if (
+            $currentActivityPrice <=
+            $alternativeActivityPrice
+        ) {
+            continue;
+        }
 
         $activitySavingPerTraveler =
             $currentActivityPrice -
             $alternativeActivityPrice;
 
-
         $activitySaving =
             $activitySavingPerTraveler *
             $travelers;
 
-
         $activitySaving =
             min(
                 $activitySaving,
-                $activityCost
+                $activityOptimizedCost
             );
 
-
         $activityOptimizedCost =
-            $activityCost -
+            $activityOptimizedCost -
             $activitySaving;
-
 
         $activityAlternativeNames[] =
             $alternativePlace["name"];
 
+        $activityReplacements[] = [
+            "current" => $paidToReplace["name"],
+            "alternative" => $alternativePlace["name"],
+            "current_price" => $currentActivityPrice,
+            "alternative_price" => $alternativeActivityPrice,
+            "saving" => $activitySaving,
+            "current_place" => $paidToReplace["place"] ?? null,
+            "alternative_place" => $alternativePlace["place"] ?? null
+        ];
+    }
+}
+
+
+if (!empty($activityReplacements)) {
+
+    if (count($activityReplacements) === 1) {
+
+        $replacement = $activityReplacements[0];
 
         $optimizationSuggestions[] = [
 
@@ -1086,36 +1181,91 @@ if (
                 "Replace a paid attraction",
 
             "current" =>
-                $paidToReplace["name"],
+                $replacement["current"],
 
             "alternative" =>
-                $alternativePlace["name"],
+                $replacement["alternative"],
 
             "description" =>
                 "Replace " .
-                $paidToReplace["name"] .
+                $replacement["current"] .
                 " (estimated cost " .
-                formatRupees(
-                    $currentActivityPrice
-                ) .
+                formatRupees($replacement["current_price"]) .
                 ") with " .
-                $alternativePlace["name"] .
+                $replacement["alternative"] .
                 " (estimated cost " .
-                formatRupees(
-                    $alternativeActivityPrice
-                ) .
+                formatRupees($replacement["alternative_price"]) .
                 ").",
 
             "current_cost" =>
-                $currentActivityPrice *
-                $travelers,
+                $replacement["current_price"] * $travelers,
 
             "alternative_cost" =>
-                $alternativeActivityPrice *
-                $travelers,
+                $replacement["alternative_price"] * $travelers,
 
             "saving" =>
-                $activitySaving
+                $replacement["saving"]
+        ];
+
+    } else {
+
+        $totalReplacementSaving = array_sum(
+            array_column($activityReplacements, "saving")
+        );
+
+        $replacementLines = [];
+
+        foreach ($activityReplacements as $replacement) {
+            $replacementLines[] =
+                $replacement["current"] .
+                " → " .
+                $replacement["alternative"];
+        }
+
+        $optimizationSuggestions[] = [
+
+            "type" => "activity",
+
+            "icon" => "🎟️",
+
+            "title" =>
+                "Replace " .
+                count($activityReplacements) .
+                " paid attractions",
+
+            "current" =>
+                implode(", ", array_column($activityReplacements, "current")),
+
+            "alternative" =>
+                implode(", ", array_column($activityReplacements, "alternative")),
+
+            "description" =>
+                "To fit your budget, swap: " .
+                implode("; ", $replacementLines) .
+                ".",
+
+            "current_cost" =>
+                array_sum(
+                    array_map(
+                        function ($r) use ($travelers) {
+                            return $r["current_price"] * $travelers;
+                        },
+                        $activityReplacements
+                    )
+                ),
+
+            "alternative_cost" =>
+                array_sum(
+                    array_map(
+                        function ($r) use ($travelers) {
+                            return $r["alternative_price"] * $travelers;
+                        },
+                        $activityReplacements
+                    )
+                ),
+
+            "saving" =>
+                $totalReplacementSaving
         ];
     }
 }
@@ -1307,6 +1457,168 @@ if ($userBudget > 0) {
     $optimizedPercentage = 0;
 }
 
+
+/* =====================================================
+   APPLY BUDGET-FRIENDLY ITINERARY
+   =====================================================
+
+   Writes the recommended swaps directly into the saved
+   itinerary: every paid attraction picked out above is
+   replaced in-place (same day, same time slot) with its
+   free/cheap alternative, and the trip is saved with the
+   new, budget-fitting plan.
+   ===================================================== */
+
+$applyMessage = "";
+$applyMessageType = "";
+
+if (
+    $_SERVER["REQUEST_METHOD"] === "POST" &&
+    isset($_POST["apply_budget_plan"])
+) {
+
+    if (empty($activityReplacements)) {
+
+        $applyMessage =
+            "There is nothing to replace right now.";
+
+        $applyMessageType = "error";
+
+    } else {
+
+        /* Build a quick lookup: place name -> replacement */
+
+        $replacementByName = [];
+
+        foreach ($activityReplacements as $replacement) {
+
+            if (empty($replacement["alternative_place"])) {
+                continue;
+            }
+
+            $key = strtolower(trim($replacement["current"]));
+
+            $replacementByName[$key] = $replacement["alternative_place"];
+        }
+
+        $appliedCount = 0;
+
+        foreach ($generatedItinerary as $dayKey => &$dayData) {
+
+            if ($dayKey === "_accommodation") {
+                continue;
+            }
+
+            if (
+                !is_array($dayData) ||
+                !isset($dayData["places"]) ||
+                !is_array($dayData["places"])
+            ) {
+                continue;
+            }
+
+            foreach ($dayData["places"] as &$place) {
+
+                if (!is_array($place) || !empty($place["is_break"])) {
+                    continue;
+                }
+
+                $nameKey = strtolower(trim($place["name"] ?? ""));
+
+                if (!isset($replacementByName[$nameKey])) {
+                    continue;
+                }
+
+                $altPlace = $replacementByName[$nameKey];
+
+                /* Keep the day's schedule (time slot, travel
+                   time, distance) but swap the place itself. */
+
+                $place["name"] =
+                    $altPlace["name"] ?? $place["name"];
+
+                $place["category"] =
+                    $altPlace["category"] ?? $place["category"];
+
+                $place["latitude"] =
+                    $altPlace["latitude"] ?? $place["latitude"];
+
+                $place["longitude"] =
+                    $altPlace["longitude"] ?? $place["longitude"];
+
+                $place["recommendation_score"] =
+                    $altPlace["recommendation_score"] ?? ($place["recommendation_score"] ?? 0);
+
+                $place["opening_hours"] =
+                    $altPlace["opening_hours"] ?? "";
+
+                $place["description"] =
+                    $altPlace["description"] ?? "";
+
+                /* Remove the used replacement so the same
+                   free place is not applied twice. */
+
+                unset($replacementByName[$nameKey]);
+
+                $appliedCount++;
+            }
+
+            unset($place);
+        }
+
+        unset($dayData);
+
+        if ($appliedCount > 0) {
+
+            $updateStmt = $conn->prepare(
+                "UPDATE trips
+                 SET generated_itinerary = ?
+                 WHERE trip_id = ?
+                 AND user_id = ?"
+            );
+
+            $encodedItinerary = json_encode($generatedItinerary);
+
+            $updateStmt->bind_param(
+                "sii",
+                $encodedItinerary,
+                $trip_id,
+                $user_id
+            );
+
+            if ($updateStmt->execute()) {
+
+                $updateStmt->close();
+
+                header(
+                    "Location: itinerary.php?trip_id=" .
+                    $trip_id .
+                    "&budget_applied=1"
+                );
+                exit();
+
+            } else {
+
+                $applyMessage =
+                    "Could not save the updated itinerary. Database error: " .
+                    $updateStmt->error;
+
+                $applyMessageType = "error";
+
+                $updateStmt->close();
+            }
+
+        } else {
+
+            $applyMessage =
+                "Could not find those places in your saved itinerary. " .
+                "Try regenerating your itinerary first.";
+
+            $applyMessageType = "error";
+        }
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -1366,6 +1678,51 @@ if ($userBudget > 0) {
     border-radius: 10px;
     text-decoration: none;
     font-weight: 600;
+}
+
+.budget-alert {
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.budget-alert-error {
+    background: #fdecea;
+    color: #b3261e;
+    border: 1px solid #f5c2c0;
+}
+
+.budget-alert-success {
+    background: #e7f7ee;
+    color: #1e7a44;
+    border: 1px solid #b9e6cc;
+}
+
+.budget-apply-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: #fff7e6;
+    border: 1px solid #ffd88a;
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 30px;
+}
+
+.budget-apply-banner p {
+    margin-top: 6px;
+    color: #6b4e00;
+}
+
+.budget-apply-btn {
+    background: #ff9900;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
 }
 
 .budget-summary {
@@ -1887,6 +2244,47 @@ echo strtoupper(
 </div>
 
 </section>
+
+
+<?php if (!empty($applyMessage)): ?>
+
+<section
+    class="budget-alert budget-alert-<?php echo htmlspecialchars($applyMessageType); ?>"
+>
+    <?php echo htmlspecialchars($applyMessage); ?>
+</section>
+
+<?php endif; ?>
+
+
+<?php if ($budgetClass === "danger" && !empty($activityReplacements)): ?>
+
+<section class="budget-apply-banner">
+
+    <div>
+        <strong>⚠️ Estimated trip cost exceeds your budget.</strong>
+        <p>
+            We found
+            <?php echo count($activityReplacements); ?>
+            paid attraction(s) that can be swapped for free/cheap
+            alternatives to bring your trip back within budget.
+        </p>
+    </div>
+
+    <form method="POST" action="budget.php?trip_id=<?php echo $trip_id; ?>">
+        <input type="hidden" name="apply_budget_plan" value="1">
+        <button
+            type="submit"
+            class="budget-action-btn budget-apply-btn"
+            onclick="return confirm('Replace the over-budget places in your itinerary with cheaper alternatives?');"
+        >
+            🔁 Apply Budget-Friendly Itinerary
+        </button>
+    </form>
+
+</section>
+
+<?php endif; ?>
 
 
 <!-- =================================================
@@ -2774,4 +3172,3 @@ AI Travel Itinerary Optimizer
 </body>
 
 </html>
-```

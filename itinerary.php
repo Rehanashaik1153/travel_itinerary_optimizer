@@ -1483,6 +1483,25 @@ $page_title =
 <main class="itinerary-main">
 
 
+<?php if (isset($_GET["budget_applied"]) && $_GET["budget_applied"] === "1"): ?>
+
+<section class="budget-alert budget-alert-success">
+    ✅ Your itinerary was updated with budget-friendly alternatives.
+</section>
+
+<?php elseif (!empty($generatedItinerary)): ?>
+
+<section class="budget-alert budget-alert-nudge">
+    💰 Not sure this fits your budget?
+    <a href="budget.php?trip_id=<?php echo $trip_id; ?>">
+        Check your estimated cost
+    </a>
+    — if it's over, we'll suggest cheaper places to swap in.
+</section>
+
+<?php endif; ?>
+
+
 <!-- =================================================
      HEADER
      ================================================= -->
