@@ -77,7 +77,7 @@ function getNearbyPlaces(
     */
 
     if ($isBroadDestination) {
-        $radius = max($radius, 30000);
+        $radius = max($radius, 40000);
     }
 
 
@@ -197,12 +197,18 @@ function getNearbyPlaces(
         $clauses[] =
             'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[natural~"beach|peak|waterfall|spring|cliff|valley|wood|forest"];';
 
+        /* Food is always included, even in "light" mode -
+           without it there is nothing for the lunch-break
+           logic to pick a real restaurant/cafe from, and
+           the itinerary falls back to a generic "Lunch
+           Break" placeholder with no actual place. */
+
+        $clauses[] =
+            'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[amenity~"restaurant|cafe|fast_food' . ($light ? '' : '|food_court') . '"];';
+
         if (!$light) {
             $clauses[] =
                 'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[leisure~"park|garden"];';
-
-            $clauses[] =
-                'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[amenity~"restaurant|cafe|fast_food|food_court"];';
 
             $clauses[] =
                 'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')[amenity~"cinema|theatre|arts_centre"];';
@@ -402,7 +408,8 @@ function getNearbyPlaces(
 
                         return [
                             "success" => true,
-                            "elements" => $decoded["elements"]
+                            "elements" => $decoded["elements"],
+                            "server" => $meta["url"]
                         ];
                     }
                 }
@@ -557,6 +564,102 @@ function getNearbyPlaces(
        ============================================= */
 
     $elements = $combinedResponse["elements"] ?? [];
+
+
+    /* =============================================
+       MULTI-POINT SAMPLING FOR BROAD DESTINATIONS
+       =============================================
+
+       A whole state/region geocodes to ONE central point.
+       Searching only a ~40km circle around that single
+       point covers a tiny fraction of the region, so very
+       few places get found overall - which is why an
+       itinerary for somewhere like "Jammu and Kashmir,
+       India" could end up with barely enough places to
+       fill even one per day, no matter how much daylight
+       is available.
+
+       For broad destinations, also sample a few extra
+       points spread around the center to pick up places
+       from other parts of the region. The mirror that
+       already answered successfully is reused directly
+       (a single fast request) instead of re-racing all 4
+       mirrors for every extra point.
+       ============================================= */
+
+    if ($isBroadDestination && !empty($combinedResponse["server"])) {
+
+        $stickyServer = $combinedResponse["server"];
+
+        $fetchSingleServer = function ($query, $server) {
+
+            $ch = curl_init();
+
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $server,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query(["data" => $query]),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_CONNECTTIMEOUT => 6,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTPHEADER => [
+                    "Content-Type: application/x-www-form-urlencoded",
+                    "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                    "Accept: application/json"
+                ]
+            ]);
+
+            $result = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($result !== false && $httpCode >= 200 && $httpCode < 300) {
+                $decoded = json_decode($result, true);
+                if (is_array($decoded) && isset($decoded["elements"])) {
+                    return $decoded["elements"];
+                }
+            }
+
+            return [];
+        };
+
+
+        /* Roughly +/-0.55 degrees ~= 60km. Spreads the
+           search into a small cross pattern around the
+           center instead of one single circle. */
+
+        $offsetDegrees = 0.55;
+
+        $extraPoints = [
+            [$latitude + $offsetDegrees, $longitude],
+            [$latitude - $offsetDegrees, $longitude],
+            [$latitude, $longitude + $offsetDegrees],
+            [$latitude, $longitude - $offsetDegrees]
+        ];
+
+        $pointRadius = max(20000, (int)($radius * 0.6));
+
+        foreach ($extraPoints as $point) {
+
+            $pointQuery = $buildOverpassQuery(
+                $pointRadius,
+                $point[0],
+                $point[1],
+                true
+            );
+
+            $extraElements = $fetchSingleServer(
+                $pointQuery,
+                $stickyServer
+            );
+
+            if (!empty($extraElements)) {
+                $elements = array_merge($elements, $extraElements);
+            }
+        }
+    }
+
 
     /* Save to cache for next time. */
 

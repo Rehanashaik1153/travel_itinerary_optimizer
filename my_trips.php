@@ -46,6 +46,37 @@ while ($row = $result->fetch_assoc()) {
 
 $stmt->close();
 
+
+/* ==========================================
+   SEQUENTIAL TRIP NUMBERS
+   ==========================================
+
+   Trip IDs come from the database auto-increment
+   column, so deleting a trip leaves a gap (e.g. Trip #5
+   deleted means the next trip shown is still "#6").
+   Instead, number trips 1, 2, 3... based on the order
+   they were created among the trips that still exist,
+   so deleting one always closes the gap.
+   ========================================== */
+
+$tripsByCreationOrder = $trips;
+
+usort(
+    $tripsByCreationOrder,
+    function ($a, $b) {
+        return $a["trip_id"] <=> $b["trip_id"];
+    }
+);
+
+$tripDisplayNumbers = [];
+
+$sequenceNumber = 1;
+
+foreach ($tripsByCreationOrder as $tripForNumbering) {
+    $tripDisplayNumbers[$tripForNumbering["trip_id"]] = $sequenceNumber;
+    $sequenceNumber++;
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -237,7 +268,7 @@ $stmt->close();
                         <span class="trip-id">
 
                             Trip #
-                            <?php echo $trip["trip_id"]; ?>
+                            <?php echo $tripDisplayNumbers[$trip["trip_id"]] ?? $trip["trip_id"]; ?>
 
                         </span>
 
