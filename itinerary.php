@@ -211,6 +211,8 @@ $placesDiscoveredCount = 0;
 
 $savedPlacesCount = 0;
 
+$isBroadDestinationSearch = false;
+
 
 /* =====================================================
    LOAD SAVED ITINERARY
@@ -886,6 +888,12 @@ if ($needsGeneration) {
                     "places"
                 ] ?? [];
 
+            $isBroadDestinationSearch =
+                !empty(
+                    $placesResult["broad_destination"]
+                );
+
+
 
             /* ---------------------------------------------
                DISCOVERED PLACE COUNT
@@ -911,7 +919,9 @@ if ($needsGeneration) {
                         $trip[
                             "interests"
                         ] ?? "",
-                        $number_of_days
+                        $number_of_days,
+                        $trip["budget"] ?? 0,
+                        $trip["travelers"] ?? 1
                     );
             }
 
@@ -1387,6 +1397,13 @@ $page_title =
     <link
         rel="stylesheet"
         href="style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
     >
 
 </head>
@@ -2066,6 +2083,31 @@ $page_title =
                     <?php if (
                         !empty(
                             $place[
+                                "recommendation_reason"
+                            ]
+                        )
+                    ): ?>
+
+                        <p class="recommendation-reason">
+
+                            🤖
+
+                            <?php
+                            echo htmlspecialchars(
+                                $place[
+                                    "recommendation_reason"
+                                ]
+                            );
+                            ?>
+
+                        </p>
+
+                    <?php endif; ?>
+
+
+                    <?php if (
+                        !empty(
+                            $place[
                                 "opening_hours"
                             ]
                         )
@@ -2122,6 +2164,150 @@ $page_title =
 
 
 <!-- =================================================
+     TRIP MAP
+     ================================================= -->
+
+<?php
+
+/*
+   Build a simple marker list for the embedded map:
+   accommodation (if any) + every scheduled place across
+   all days, tagged with its day number so markers can be
+   colour-grouped per day on the map.
+*/
+
+$mapMarkers = [];
+
+if (
+    $selectedAccommodation !== null &&
+    !empty($selectedAccommodation["latitude"]) &&
+    !empty($selectedAccommodation["longitude"])
+) {
+    $mapMarkers[] = [
+        "name" => $selectedAccommodation["name"] ?? "Your Stay",
+        "latitude" => (float)$selectedAccommodation["latitude"],
+        "longitude" => (float)$selectedAccommodation["longitude"],
+        "day" => 0,
+        "type" => "accommodation"
+    ];
+}
+
+if (!empty($generatedItinerary)) {
+
+    foreach ($generatedItinerary as $dayData) {
+
+        if (
+            !is_array($dayData) ||
+            empty($dayData["places"]) ||
+            !is_array($dayData["places"])
+        ) {
+            continue;
+        }
+
+        foreach ($dayData["places"] as $mapPlace) {
+
+            if (
+                !is_array($mapPlace) ||
+                empty($mapPlace["latitude"]) ||
+                empty($mapPlace["longitude"])
+            ) {
+                continue;
+            }
+
+            $mapMarkers[] = [
+                "name" => $mapPlace["name"] ?? "Place",
+                "latitude" => (float)$mapPlace["latitude"],
+                "longitude" => (float)$mapPlace["longitude"],
+                "day" => (int)($dayData["day"] ?? 0),
+                "type" => !empty($mapPlace["is_break"]) ? "food" : "place"
+            ];
+        }
+    }
+}
+
+?>
+
+<?php if (!empty($mapMarkers)): ?>
+
+<section class="trip-map-section">
+
+    <p class="dashboard-small-title">
+        WHERE YOU'LL GO
+    </p>
+
+    <h2>
+        Trip Map
+    </h2>
+
+    <p>
+        Your accommodation and every scheduled stop, colour-coded
+        by day.
+    </p>
+
+    <div id="tripMap" class="trip-map"></div>
+
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+
+<script>
+(function () {
+    var markers = <?php echo json_encode($mapMarkers); ?>;
+
+    if (!markers.length || typeof L === "undefined") {
+        return;
+    }
+
+    var dayColors = [
+        "#7c5cff", "#ff8a5c", "#3fb984",
+        "#ff5c8a", "#5cc7ff", "#ffcc4d", "#a05cff"
+    ];
+
+    var map = L.map("tripMap");
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            attribution: "&copy; OpenStreetMap contributors",
+            maxZoom: 18
+        }
+    ).addTo(map);
+
+    var bounds = [];
+
+    markers.forEach(function (m) {
+
+        var color = m.type === "accommodation"
+            ? "#1e293b"
+            : dayColors[(m.day - 1 + dayColors.length) % dayColors.length];
+
+        var icon = L.divIcon({
+            className: "trip-map-marker",
+            html: '<div style="background:' + color + '"></div>',
+            iconSize: [18, 18]
+        });
+
+        var label = m.type === "accommodation"
+            ? ("🏨 " + m.name)
+            : ("Day " + m.day + " — " + m.name);
+
+        L.marker([m.latitude, m.longitude], { icon: icon })
+            .addTo(map)
+            .bindPopup(label);
+
+        bounds.push([m.latitude, m.longitude]);
+    });
+
+    map.fitBounds(bounds, { padding: [30, 30] });
+})();
+</script>
+
+<?php endif; ?>
+
+
+<!-- =================================================
      DAY-WISE ITINERARY
      ================================================= -->
 
@@ -2141,6 +2327,25 @@ $page_title =
         hours. Your selected accommodation is used as
         the daily base whenever coordinates are available.
     </p>
+
+    <?php if (
+        $isBroadDestinationSearch &&
+        !empty($itineraryPlaces) &&
+        count($itineraryPlaces) < ($number_of_days * 2)
+    ): ?>
+
+        <div class="budget-alert budget-alert-nudge">
+            📍 "<?php echo $destination; ?>" is a large area, so only
+            <?php echo count($itineraryPlaces); ?> place(s) were found
+            within a single search radius — that's why some days show
+            fewer stops. For a fuller day-by-day plan, try
+            <a href="plan_trip.php?trip_id=<?php echo $trip_id; ?>">
+                editing your trip
+            </a>
+            to a specific city or town instead of the whole state/region.
+        </div>
+
+    <?php endif; ?>
 
 
     <?php if (
@@ -2417,6 +2622,39 @@ $page_title =
 
                                         🍴 Lunch break
 
+                                        <?php if (
+                                            !empty(
+                                                $schedulePlace["address"]
+                                            )
+                                        ): ?>
+
+                                            <br>
+
+                                            📍
+                                            <?php
+                                            echo htmlspecialchars(
+                                                $schedulePlace["address"]
+                                            );
+                                            ?>
+
+                                        <?php endif; ?>
+
+                                        <?php if (
+                                            !empty(
+                                                $schedulePlace["description"]
+                                            )
+                                        ): ?>
+
+                                            <br>
+
+                                            <?php
+                                            echo htmlspecialchars(
+                                                $schedulePlace["description"]
+                                            );
+                                            ?>
+
+                                        <?php endif; ?>
+
                                     <?php else: ?>
 
                                         ⏱️ Visit:
@@ -2485,6 +2723,27 @@ $page_title =
                                     <?php endif; ?>
 
                                 </div>
+
+
+                                <?php if (
+                                    !empty(
+                                        $schedulePlace["recommendation_reason"]
+                                    )
+                                ): ?>
+
+                                    <div class="timeline-reason">
+
+                                        🤖
+
+                                        <?php
+                                        echo htmlspecialchars(
+                                            $schedulePlace["recommendation_reason"]
+                                        );
+                                        ?>
+
+                                    </div>
+
+                                <?php endif; ?>
 
 
                                 <?php if (

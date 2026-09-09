@@ -406,13 +406,138 @@ function overlapsLunch(
 
 
 /* =====================================================
+   FIND A REAL NEARBY FOOD PLACE FOR LUNCH
+   =====================================================
+
+   Previously every lunch break was just a generic
+   "Lunch Break" label sitting at whatever the current
+   location happened to be - no actual restaurant. This
+   picks the nearest discovered "Food" category place
+   (restaurant / cafe / etc.) and removes it from the
+   remaining pool so it isn't also scheduled separately.
+   ===================================================== */
+
+function findLunchFoodPlace(
+    array &$remainingPlaces,
+    $latitude,
+    $longitude
+) {
+    $bestIndex = null;
+    $bestDistance = null;
+
+    foreach ($remainingPlaces as $index => $candidate) {
+
+        $category = strtolower(
+            trim($candidate["category"] ?? "")
+        );
+
+        if ($category !== "food") {
+            continue;
+        }
+
+        if (!itineraryValidCoordinates($candidate)) {
+            continue;
+        }
+
+        $distance = calculateDistance(
+            $latitude,
+            $longitude,
+            (float)$candidate["latitude"],
+            (float)$candidate["longitude"]
+        );
+
+        /* Keep lunch realistic - don't drag the traveller
+           20km away just to eat. */
+
+        if ($distance > 8) {
+            continue;
+        }
+
+        if (
+            $bestDistance === null ||
+            $distance < $bestDistance
+        ) {
+            $bestDistance = $distance;
+            $bestIndex = $index;
+        }
+    }
+
+    if ($bestIndex === null) {
+        return null;
+    }
+
+    $foodPlace = $remainingPlaces[$bestIndex];
+
+    array_splice($remainingPlaces, $bestIndex, 1);
+
+    return $foodPlace;
+}
+
+
+/* =====================================================
    CREATE LUNCH BREAK
    ===================================================== */
 
 function createLunchBreak(
     $latitude,
-    $longitude
+    $longitude,
+    $foodPlace = null
 ) {
+    if ($foodPlace !== null) {
+
+        return [
+
+            "name" =>
+                $foodPlace["name"] ?? "Lunch Break",
+
+            "category" =>
+                "Food",
+
+            "latitude" =>
+                (float)($foodPlace["latitude"] ?? $latitude),
+
+            "longitude" =>
+                (float)($foodPlace["longitude"] ?? $longitude),
+
+            "recommendation_score" =>
+                $foodPlace["recommendation_score"] ?? 0,
+
+            "opening_hours" =>
+                $foodPlace["opening_hours"] ?? "",
+
+            "description" =>
+                $foodPlace["description"] ??
+                ($foodPlace["cuisine"] ?? "" ?
+                    ucfirst($foodPlace["cuisine"]) . " cuisine" :
+                    ""),
+
+            "recommendation_reason" =>
+                $foodPlace["recommendation_reason"] ??
+                "Nearest good lunch spot to your morning location.",
+
+            "address" =>
+                $foodPlace["address"] ?? "",
+
+            "distance_km" =>
+                0,
+
+            "travel_minutes" =>
+                0,
+
+            "visit_minutes" =>
+                60,
+
+            "start_time" =>
+                "13:00",
+
+            "end_time" =>
+                "14:00",
+
+            "is_break" =>
+                true
+        ];
+    }
+
     return [
 
         "name" =>
@@ -432,6 +557,9 @@ function createLunchBreak(
 
         "opening_hours" =>
             "",
+
+        "recommendation_reason" =>
+            "No nearby restaurant was found in the discovered places, so this is a placeholder break.",
 
         "distance_km" =>
             0,
@@ -760,11 +888,24 @@ function generateItinerary(
                 $currentTime >= $lunchStart
             ) {
 
-                $daySchedule[] =
-                    createLunchBreak(
+                $lunchPlace =
+                    findLunchFoodPlace(
+                        $remainingPlaces,
                         $currentLatitude,
                         $currentLongitude
                     );
+
+                $daySchedule[] =
+                    createLunchBreak(
+                        $currentLatitude,
+                        $currentLongitude,
+                        $lunchPlace
+                    );
+
+                if ($lunchPlace !== null) {
+                    $currentLatitude = (float)$lunchPlace["latitude"];
+                    $currentLongitude = (float)$lunchPlace["longitude"];
+                }
 
                 $currentTime =
                     $lunchEnd;
@@ -1158,11 +1299,24 @@ function generateItinerary(
                 $lunchEnd
             ) {
 
-                $daySchedule[] =
-                    createLunchBreak(
+                $lunchPlace =
+                    findLunchFoodPlace(
+                        $remainingPlaces,
                         $currentLatitude,
                         $currentLongitude
                     );
+
+                $daySchedule[] =
+                    createLunchBreak(
+                        $currentLatitude,
+                        $currentLongitude,
+                        $lunchPlace
+                    );
+
+                if ($lunchPlace !== null) {
+                    $currentLatitude = (float)$lunchPlace["latitude"];
+                    $currentLongitude = (float)$lunchPlace["longitude"];
+                }
 
                 $currentTime =
                     $lunchEnd;
@@ -1212,6 +1366,11 @@ function generateItinerary(
                 "description" =>
                     $place[
                         "description"
+                    ] ?? "",
+
+                "recommendation_reason" =>
+                    $place[
+                        "recommendation_reason"
                     ] ?? "",
 
                 "distance_km" =>
@@ -1300,11 +1459,24 @@ function generateItinerary(
                 $lunchStart
             ) {
 
-                $daySchedule[] =
-                    createLunchBreak(
+                $lunchPlace =
+                    findLunchFoodPlace(
+                        $remainingPlaces,
                         $currentLatitude,
                         $currentLongitude
                     );
+
+                $daySchedule[] =
+                    createLunchBreak(
+                        $currentLatitude,
+                        $currentLongitude,
+                        $lunchPlace
+                    );
+
+                if ($lunchPlace !== null) {
+                    $currentLatitude = (float)$lunchPlace["latitude"];
+                    $currentLongitude = (float)$lunchPlace["longitude"];
+                }
 
                 $currentTime =
                     $lunchEnd;
@@ -1344,10 +1516,18 @@ function generateItinerary(
             $placesToday > 0
         ) {
 
+            $lunchPlace =
+                findLunchFoodPlace(
+                    $remainingPlaces,
+                    $currentLatitude,
+                    $currentLongitude
+                );
+
             $daySchedule[] =
                 createLunchBreak(
                     $currentLatitude,
-                    $currentLongitude
+                    $currentLongitude,
+                    $lunchPlace
                 );
         }
 

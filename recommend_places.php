@@ -13,10 +13,76 @@
    7. Return at most 4 recommended attractions per day.
 
    Public function used by the project:
-       recommendPlaces($allPlaces, $interests, $numberOfDays)
+       recommendPlaces($allPlaces, $interests, $numberOfDays, $budget, $travelers)
 
    This file has no dependency on any other helper function.
    ============================================================ */
+
+
+/* ============================================================
+   LIGHTWEIGHT COST ESTIMATE (for budget-aware scoring)
+   ------------------------------------------------------------
+   Mirrors the estimate used in budget.php, kept local here so
+   this file has no cross-file dependency. Only needs a rough
+   free / cheap / paid signal, not an exact rupee figure.
+   ============================================================ */
+
+function wanderRecommendGetPlaceValue($place, $keys, $default = "")
+{
+    foreach ($keys as $key) {
+        if (!empty($place[$key])) {
+            return $place[$key];
+        }
+    }
+    return $default;
+}
+
+function wanderRecommendEstimatedCost($place)
+{
+    $text = strtolower(
+        (string)wanderRecommendGetPlaceValue(
+            $place,
+            ["fee", "price", "cost", "entry_fee", "description"],
+            ""
+        )
+    );
+
+    if (
+        strpos($text, "free") !== false ||
+        strpos($text, "no entry") !== false
+    ) {
+        return 0;
+    }
+
+    $category = strtolower(
+        (string)wanderRecommendGetPlaceValue(
+            $place,
+            ["category", "type", "place_type"],
+            ""
+        )
+    );
+
+    if (
+        strpos($category, "park") !== false ||
+        strpos($category, "viewpoint") !== false ||
+        strpos($category, "nature") !== false ||
+        strpos($category, "beach") !== false ||
+        strpos($category, "scenic") !== false ||
+        strpos($category, "religious") !== false
+    ) {
+        return 0;
+    }
+
+    if (strpos($category, "food") !== false) {
+        return 300;
+    }
+
+    if (strpos($category, "accommodation") !== false) {
+        return 2000;
+    }
+
+    return 250;
+}
 
 
 /* ============================================================
@@ -1061,8 +1127,26 @@ function wanderRecommendCategoryCap(
     $type,
     $hasInterests,
     $matchingInterests,
-    $availableCounts
+    $availableCounts,
+    $numberOfDays = 1
 ) {
+    /*
+       Food places double as the lunch spot for EVERY day
+       of the trip (see findLunchFoodPlace in
+       generate_itinerary.php), not just a single
+       "recommended place to visit". Capping food at 1 for
+       the whole trip meant only day 1 ever got a real
+       restaurant and every other day fell back to a
+       placeholder "Lunch Break" with no actual place.
+       Always allow enough food places for one per day,
+       plus a spare.
+    */
+
+    if ($type === 'food') {
+        return max(2, (int)$numberOfDays + 1);
+    }
+
+
     /*
        When the user selected an interest, matching places
        can appear more often. Still, duplicate-like types
@@ -1100,7 +1184,7 @@ function wanderRecommendCategoryCap(
            Non-matching categories are secondary.
         */
 
-        if ($type === 'food' || $type === 'shopping') {
+        if ($type === 'shopping') {
             return 1;
         }
 
@@ -1134,10 +1218,6 @@ function wanderRecommendCategoryCap(
     }
 
     if ($type === 'entertainment') {
-        return 1;
-    }
-
-    if ($type === 'food') {
         return 1;
     }
 
@@ -1301,7 +1381,9 @@ function wanderRecommendDiversityBonus(
 function recommendPlaces(
     $allPlaces,
     $interests,
-    $numberOfDays
+    $numberOfDays,
+    $budget = 0,
+    $travelers = 1
 ) {
     /* --------------------------------------------
        Validate input
@@ -1345,6 +1427,36 @@ function recommendPlaces(
 
     $hasInterests =
         !empty($cleanInterests);
+
+
+    /* --------------------------------------------
+       Budget tier
+       --------------------------------------------
+       Roughly how much is available per attraction,
+       per person, per day. Used to nudge scoring
+       towards free/cheap places when the trip is on
+       a tight budget, and to explain that choice to
+       the user later.
+       -------------------------------------------- */
+
+    $travelers = max(1, (int)$travelers);
+
+    $budget = max(0, (float)$budget);
+
+    $perPersonPerDay =
+        $budget > 0
+            ? $budget / $numberOfDays / $travelers
+            : 0;
+
+    if ($budget <= 0) {
+        $budgetTier = "unspecified";
+    } elseif ($perPersonPerDay < 1000) {
+        $budgetTier = "low";
+    } elseif ($perPersonPerDay < 3000) {
+        $budgetTier = "medium";
+    } else {
+        $budgetTier = "high";
+    }
 
 
     /* --------------------------------------------
@@ -1518,6 +1630,34 @@ function recommendPlaces(
         }
 
 
+        /*
+           Budget-aware scoring: on a tight budget, nudge
+           free/cheap places up and paid ones down. On a
+           generous or unspecified budget, cost doesn't
+           affect ranking at all.
+        */
+
+        $estimatedCost =
+            wanderRecommendEstimatedCost($place);
+
+        $budgetScore = 0;
+
+        if ($budgetTier === "low") {
+
+            $budgetScore =
+                $estimatedCost <= 0
+                    ? 12
+                    : ($estimatedCost <= 300 ? 0 : -12);
+
+        } elseif ($budgetTier === "medium") {
+
+            $budgetScore =
+                $estimatedCost <= 0
+                    ? 4
+                    : ($estimatedCost <= 500 ? 0 : -4);
+        }
+
+
         $score =
             $baseScore
             +
@@ -1527,7 +1667,44 @@ function recommendPlaces(
             +
             $importantScore
             +
-            $noInterestBonus;
+            $noInterestBonus
+            +
+            $budgetScore;
+
+
+        /*
+           "Explain choices" - build a short, honest reason
+           string from the same signals that produced the
+           score above, so the user can see why a place was
+           picked instead of the itinerary being a black box.
+        */
+
+        $reasonParts = [];
+
+        if ($interestMatches > 0) {
+            $reasonParts[] = "matches your interests";
+        }
+
+        if ($importantScore >= 10) {
+            $reasonParts[] = "a well-known landmark";
+        }
+
+        if ($qualityScore >= 8) {
+            $reasonParts[] = "has detailed, reliable listing info";
+        }
+
+        if ($budgetTier === "low" && $estimatedCost <= 0) {
+            $reasonParts[] = "free, fits your budget";
+        } elseif ($budgetTier === "low" && $estimatedCost > 300) {
+            $reasonParts[] = "kept only as a backup since it may cost more than your budget allows";
+        }
+
+        if (empty($reasonParts)) {
+            $reasonParts[] = "a good general match for this trip";
+        }
+
+        $place['recommendation_reason'] =
+            ucfirst(implode("; ", $reasonParts)) . ".";
 
 
         /*
@@ -1668,7 +1845,8 @@ function recommendPlaces(
                     $type,
                     $hasInterests,
                     $interestMatches,
-                    $availableCounts
+                    $availableCounts,
+                    $numberOfDays
                 );
 
             $currentCount =
