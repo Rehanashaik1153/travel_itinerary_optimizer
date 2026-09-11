@@ -923,6 +923,73 @@ if ($needsGeneration) {
                         $trip["budget"] ?? 0,
                         $trip["travelers"] ?? 1
                     );
+
+                /*
+                 * HARD FALLBACK: if the smart recommendation engine
+                 * rejects everything (for example because a destination
+                 * has unusual OSM categories), still build a real
+                 * itinerary from the dynamic places we just discovered.
+                 * Nothing is hard-coded here.
+                 */
+                if (empty($recommendedPlaces)) {
+
+                    $fallbackPlaces = [];
+                    $fallbackSeen = [];
+
+                    foreach ($allPlaces as $fallbackPlace) {
+
+                        if (!is_array($fallbackPlace)) {
+                            continue;
+                        }
+
+                        if (isAccommodationPlace($fallbackPlace)) {
+                            continue;
+                        }
+
+                        $fallbackName = strtolower(trim(
+                            (string)($fallbackPlace["name"] ?? "")
+                        ));
+
+                        if ($fallbackName === "" || isset($fallbackSeen[$fallbackName])) {
+                            continue;
+                        }
+
+                        $fallbackSeen[$fallbackName] = true;
+
+                        if (!isset($fallbackPlace["recommendation_score"])) {
+                            $fallbackPlace["recommendation_score"] = 50;
+                        }
+
+                        if (!isset($fallbackPlace["recommendation_reason"])) {
+                            $fallbackPlace["recommendation_reason"] =
+                                "Dynamically discovered nearby place for your trip.";
+                        }
+
+                        $fallbackPlaces[] = $fallbackPlace;
+                    }
+
+                    usort($fallbackPlaces, function ($a, $b) use ($latitude, $longitude) {
+                        $da = calculateDistance(
+                            $latitude,
+                            $longitude,
+                            (float)($a["latitude"] ?? 0),
+                            (float)($a["longitude"] ?? 0)
+                        );
+                        $db = calculateDistance(
+                            $latitude,
+                            $longitude,
+                            (float)($b["latitude"] ?? 0),
+                            (float)($b["longitude"] ?? 0)
+                        );
+                        return $da <=> $db;
+                    });
+
+                    $recommendedPlaces = array_slice(
+                        $fallbackPlaces,
+                        0,
+                        max(1, $number_of_days * 4)
+                    );
+                }
             }
 
 

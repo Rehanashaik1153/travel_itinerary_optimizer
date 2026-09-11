@@ -77,7 +77,7 @@ function getNearbyPlaces(
     */
 
     if ($isBroadDestination) {
-        $radius = max($radius, 40000);
+        $radius = max($radius, 20000);
     }
 
 
@@ -180,7 +180,7 @@ function getNearbyPlaces(
         $light = false
     ) {
 
-        $timeoutSeconds = $light ? 20 : 25;
+        $timeoutSeconds = $light ? 12 : 15;
 
         $clauses = [];
 
@@ -288,9 +288,9 @@ function getNearbyPlaces(
 
                 CURLOPT_RETURNTRANSFER => true,
 
-                CURLOPT_TIMEOUT => 18,
+                CURLOPT_TIMEOUT => 10,
 
-                CURLOPT_CONNECTTIMEOUT => 6,
+                CURLOPT_CONNECTTIMEOUT => 4,
 
                 CURLOPT_FOLLOWLOCATION => true,
 
@@ -471,10 +471,107 @@ function getNearbyPlaces(
        time out again.
        ============================================= */
 
-    $combinedResponse = $fetchOverpassParallel(
-        $combinedQuery,
-        $servers
-    );
+    /* Some PHP/XAMPP installations have cURL but do not have
+       the cURL multi extension enabled. Keep the project usable
+       there instead of throwing a fatal error. */
+
+    if (function_exists("curl_multi_init")) {
+
+        $combinedResponse = $fetchOverpassParallel(
+            $combinedQuery,
+            $servers
+        );
+
+    } elseif (function_exists("curl_init")) {
+
+        $singleFetch = function ($query, $url) {
+
+            $ch = curl_init();
+
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query([
+                    "data" => $query
+                ]),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 8,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTPHEADER => [
+                    "Content-Type: application/x-www-form-urlencoded",
+                    "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                    "Accept: application/json"
+                ]
+            ]);
+
+            $result = curl_exec($ch);
+            $httpCode = (int)curl_getinfo(
+                $ch,
+                CURLINFO_HTTP_CODE
+            );
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if (
+                $result !== false &&
+                $httpCode >= 200 &&
+                $httpCode < 300
+            ) {
+
+                $decoded = json_decode(
+                    $result,
+                    true
+                );
+
+                if (
+                    is_array($decoded) &&
+                    isset($decoded["elements"]) &&
+                    is_array($decoded["elements"])
+                ) {
+
+                    return [
+                        "success" => true,
+                        "elements" => $decoded["elements"],
+                        "server" => $url
+                    ];
+                }
+            }
+
+            return [
+                "success" => false,
+                "elements" => [],
+                "errors" => [
+                    $url .
+                    " - HTTP " .
+                    $httpCode .
+                    (
+                        $error !== ""
+                        ? ". " . $error
+                        : ""
+                    )
+                ]
+            ];
+        };
+
+        $combinedResponse = $singleFetch(
+            $combinedQuery,
+            $servers[0]
+        );
+
+    } else {
+
+        /* No cURL extension: skip Overpass and let the
+           Nominatim fallback below provide dynamic data. */
+
+        $combinedResponse = [
+            "success" => false,
+            "elements" => [],
+            "errors" => [
+                "PHP cURL extension is not enabled."
+            ]
+        ];
+    }
 
     if (!$combinedResponse["success"] && !$isBroadDestination) {
 
@@ -485,10 +582,25 @@ function getNearbyPlaces(
             true
         );
 
-        $retryResponse = $fetchOverpassParallel(
-            $lightQuery,
-            $servers
-        );
+        if (function_exists("curl_multi_init")) {
+            $retryResponse = $fetchOverpassParallel(
+                $lightQuery,
+                $servers
+            );
+        } elseif (function_exists("curl_init")) {
+            $retryResponse = $singleFetch(
+                $lightQuery,
+                $servers[0]
+            );
+        } else {
+            $retryResponse = [
+                "success" => false,
+                "elements" => [],
+                "errors" => [
+                    "PHP cURL extension is not enabled."
+                ]
+            ];
+        }
 
         if ($retryResponse["success"]) {
             $combinedResponse = $retryResponse;
@@ -499,34 +611,343 @@ function getNearbyPlaces(
             );
         }
 
-    } elseif (!$combinedResponse["success"] && $isBroadDestination) {
-
-        /* Already tried the light query - retry once more
-           with a smaller radius as a last resort. */
-
-        $smallerRadius = max(15000, (int)($radius / 2));
-
-        $fallbackQuery = $buildOverpassQuery(
-            $smallerRadius,
-            $latitude,
-            $longitude,
-            true
-        );
-
-        $retryResponse = $fetchOverpassParallel(
-            $fallbackQuery,
-            $servers
-        );
-
-        if ($retryResponse["success"]) {
-            $combinedResponse = $retryResponse;
-        } else {
-            $combinedResponse["errors"] = array_merge(
-                $combinedResponse["errors"] ?? [],
-                $retryResponse["errors"] ?? []
-            );
-        }
     }
+
+
+    /* =============================================
+       FAST FALLBACK - NOMINATIM / OPENSTREETMAP SEARCH
+       =============================================
+
+       If every Overpass mirror is unreachable from the user's
+       network, do not leave the itinerary empty. Nominatim is a
+       separate OpenStreetMap search service and can still return
+       named attractions/accommodation for many destinations.
+
+       This is intentionally a small number of sequential requests
+       so it remains friendly to the public Nominatim service.
+       ============================================= */
+
+    $fetchNominatimFallback = function ($destinationText, $latitude, $longitude) {
+
+        $queries = [
+            ["tourist attractions in " . $destinationText, "Tourist Attraction"],
+            ["places to visit in " . $destinationText, "Tourist Attraction"],
+            ["hotels in " . $destinationText, "Accommodation"],
+            ["hostels in " . $destinationText, "Accommodation"],
+            ["guest houses in " . $destinationText, "Accommodation"],
+            ["restaurants in " . $destinationText, "Food"],
+            ["parks in " . $destinationText, "Parks"],
+            ["temples churches mosques in " . $destinationText, "Religious"],
+            ["shopping in " . $destinationText, "Shopping"]
+        ];
+
+        $elements = [];
+        $seen = [];
+
+        foreach ($queries as $queryInfo) {
+
+            $queryText = $queryInfo[0];
+            $forcedCategory = $queryInfo[1];
+
+            $url =
+                "https://nominatim.openstreetmap.org/search?" .
+                http_build_query([
+                    "q" => $queryText,
+                    "format" => "jsonv2",
+                    "limit" => 15,
+                    "addressdetails" => 1,
+                    "extratags" => 1,
+                    "namedetails" => 1
+                ]);
+
+            $raw = false;
+            $httpCode = 0;
+
+            if (function_exists("curl_init")) {
+
+                $ch = curl_init();
+
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => $url,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 5,
+                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTPHEADER => [
+                        "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0 (travel itinerary project)",
+                        "Accept: application/json"
+                    ]
+                ]);
+
+                $raw = curl_exec($ch);
+                $httpCode = (int)curl_getinfo(
+                    $ch,
+                    CURLINFO_HTTP_CODE
+                );
+
+                curl_close($ch);
+
+            } else {
+
+                $context = stream_context_create([
+                    "http" => [
+                        "method" => "GET",
+                        "timeout" => 5,
+                        "header" =>
+                            "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0 (travel itinerary project)\r\n" .
+                            "Accept: application/json\r\n"
+                    ]
+                ]);
+
+                $raw = @file_get_contents(
+                    $url,
+                    false,
+                    $context
+                );
+
+                if ($raw !== false) {
+                    $httpCode = 200;
+                }
+            }
+
+            if (
+                $raw === false ||
+                $httpCode < 200 ||
+                $httpCode >= 300
+            ) {
+                continue;
+            }
+
+            $items = json_decode($raw, true);
+
+            if (!is_array($items)) {
+                continue;
+            }
+
+            foreach ($items as $item) {
+
+                $name =
+                    trim(
+                        (string)(
+                            $item["name"]
+                            ?? ""
+                        )
+                    );
+
+                if ($name === "") {
+
+                    $displayName =
+                        trim(
+                            (string)(
+                                $item["display_name"]
+                                ?? ""
+                            )
+                        );
+
+                    if ($displayName !== "") {
+                        $parts = explode(",", $displayName);
+                        $name = trim($parts[0]);
+                    }
+                }
+
+                if ($name === "") {
+                    continue;
+                }
+
+                $lat =
+                    isset($item["lat"])
+                    ? (float)$item["lat"]
+                    : 0;
+
+                $lon =
+                    isset($item["lon"])
+                    ? (float)$item["lon"]
+                    : 0;
+
+                if ($lat == 0 || $lon == 0) {
+                    continue;
+                }
+
+                $nameKey =
+                    strtolower(
+                        preg_replace(
+                            "/\s+/",
+                            " ",
+                            $name
+                        )
+                    );
+
+                if (isset($seen[$nameKey])) {
+                    continue;
+                }
+
+                $seen[$nameKey] = true;
+
+                $address =
+                    trim(
+                        (string)(
+                            $item["display_name"]
+                            ?? ""
+                        )
+                    );
+
+                $extratags =
+                    is_array($item["extratags"] ?? null)
+                    ? $item["extratags"]
+                    : [];
+
+                $category = $forcedCategory;
+
+                /* Refine the broad Nominatim query using
+                   whatever OSM metadata was returned. */
+
+                $osmType =
+                    strtolower(
+                        (string)(
+                            $extratags["tourism"]
+                            ?? $item["type"]
+                            ?? ""
+                        )
+                    );
+
+                $amenity =
+                    strtolower(
+                        (string)(
+                            $extratags["amenity"]
+                            ?? ""
+                        )
+                    );
+
+                $natural =
+                    strtolower(
+                        (string)(
+                            $extratags["natural"]
+                            ?? ""
+                        )
+                    );
+
+                $leisure =
+                    strtolower(
+                        (string)(
+                            $extratags["leisure"]
+                            ?? ""
+                        )
+                    );
+
+                $shop =
+                    strtolower(
+                        (string)(
+                            $extratags["shop"]
+                            ?? ""
+                        )
+                    );
+
+                if (
+                    in_array(
+                        $osmType,
+                        [
+                            "hotel",
+                            "hostel",
+                            "guest_house",
+                            "motel",
+                            "resort",
+                            "apartment",
+                            "chalet",
+                            "camp_site",
+                            "alpine_hut"
+                        ],
+                        true
+                    )
+                ) {
+                    $category = "Accommodation";
+                } elseif ($amenity === "place_of_worship") {
+                    $category = "Religious";
+                } elseif ($natural === "beach") {
+                    $category = "Beaches";
+                } elseif (
+                    in_array(
+                        $natural,
+                        [
+                            "waterfall",
+                            "spring",
+                            "cliff",
+                            "valley",
+                            "peak",
+                            "wood",
+                            "forest"
+                        ],
+                        true
+                    )
+                ) {
+                    $category = "Nature & Scenic";
+                } elseif (
+                    in_array(
+                        $leisure,
+                        ["park", "garden"],
+                        true
+                    )
+                ) {
+                    $category = "Parks";
+                } elseif ($shop !== "") {
+                    $category = "Shopping";
+                } elseif (
+                    in_array(
+                        $amenity,
+                        [
+                            "restaurant",
+                            "cafe",
+                            "fast_food",
+                            "food_court"
+                        ],
+                        true
+                    )
+                ) {
+                    $category = "Food";
+                }
+
+                $elements[] = [
+                    "lat" => $lat,
+                    "lon" => $lon,
+                    "tags" => [
+                        "name" => $name,
+                        "tourism" => (
+                            $category === "Accommodation"
+                            ? (
+                                $osmType !== ""
+                                ? $osmType
+                                : "hotel"
+                            )
+                            : (
+                                $osmType !== ""
+                                ? $osmType
+                                : ""
+                            )
+                        ),
+                        "amenity" => $amenity,
+                        "natural" => $natural,
+                        "leisure" => $leisure,
+                        "shop" => $shop,
+                        "website" =>
+                            $extratags["website"]
+                            ?? "",
+                        "opening_hours" =>
+                            $extratags["opening_hours"]
+                            ?? "",
+                        "phone" =>
+                            $extratags["phone"]
+                            ?? "",
+                        "description" =>
+                            $extratags["description"]
+                            ?? "",
+                        "addr:full" => $address
+                    ],
+                    "_fallback_category" => $category
+                ];
+            }
+        }
+
+        return $elements;
+    };
 
 
     /* =============================================
@@ -535,23 +956,60 @@ function getNearbyPlaces(
 
     if (!$combinedResponse["success"]) {
 
-        return [
+        $fallbackElements =
+            $fetchNominatimFallback(
+                $destinationText,
+                $latitude,
+                $longitude
+            );
 
-            "success" => false,
+        if (!empty($fallbackElements)) {
 
-            "message" =>
-                "Unable to fetch places right now. The public map " .
-                "data servers are temporarily overloaded or " .
-                "unreachable from this network. Please wait a " .
-                "minute and click Regenerate. (" .
-                implode(
-                    " | ",
-                    $combinedResponse["errors"] ?? []
-                ) .
-                ")"
+            $elements = $fallbackElements;
 
-        ];
+            $combinedResponse = [
+                "success" => true,
+                "elements" => $elements,
+                "server" => "Nominatim fallback"
+            ];
 
+        } else {
+
+            return [
+
+                "success" => false,
+
+                "message" =>
+                    "Unable to fetch places right now. " .
+                    "The public map services are unreachable " .
+                    "from this network. Please check your " .
+                    "internet connection and try Regenerate again."
+
+            ];
+
+        }
+
+    } else {
+
+        $elements = $combinedResponse["elements"] ?? [];
+
+        /* An HTTP-successful response containing no useful
+           elements is also treated as a fallback condition. */
+
+        if (count($elements) === 0) {
+
+            $fallbackElements =
+                $fetchNominatimFallback(
+                    $destinationText,
+                    $latitude,
+                    $longitude
+                );
+
+            if (!empty($fallbackElements)) {
+                $elements = $fallbackElements;
+                $combinedResponse["elements"] = $elements;
+            }
+        }
     }
 
     $placesResponse = $combinedResponse;
@@ -567,99 +1025,14 @@ function getNearbyPlaces(
 
 
     /* =============================================
-       MULTI-POINT SAMPLING FOR BROAD DESTINATIONS
+       FAST MODE FOR BROAD DESTINATIONS
        =============================================
 
-       A whole state/region geocodes to ONE central point.
-       Searching only a ~40km circle around that single
-       point covers a tiny fraction of the region, so very
-       few places get found overall - which is why an
-       itinerary for somewhere like "Jammu and Kashmir,
-       India" could end up with barely enough places to
-       fill even one per day, no matter how much daylight
-       is available.
-
-       For broad destinations, also sample a few extra
-       points spread around the center to pick up places
-       from other parts of the region. The mirror that
-       already answered successfully is reused directly
-       (a single fast request) instead of re-racing all 4
-       mirrors for every extra point.
+       Do not perform several sequential extra searches here.
+       Those additional Overpass requests were the main reason
+       broad destinations could take a very long time in XAMPP.
+       The first successful dynamic result is used immediately.
        ============================================= */
-
-    if ($isBroadDestination && !empty($combinedResponse["server"])) {
-
-        $stickyServer = $combinedResponse["server"];
-
-        $fetchSingleServer = function ($query, $server) {
-
-            $ch = curl_init();
-
-            curl_setopt_array($ch, [
-                CURLOPT_URL => $server,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => http_build_query(["data" => $query]),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 15,
-                CURLOPT_CONNECTTIMEOUT => 6,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTPHEADER => [
-                    "Content-Type: application/x-www-form-urlencoded",
-                    "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
-                    "Accept: application/json"
-                ]
-            ]);
-
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($result !== false && $httpCode >= 200 && $httpCode < 300) {
-                $decoded = json_decode($result, true);
-                if (is_array($decoded) && isset($decoded["elements"])) {
-                    return $decoded["elements"];
-                }
-            }
-
-            return [];
-        };
-
-
-        /* Roughly +/-0.55 degrees ~= 60km. Spreads the
-           search into a small cross pattern around the
-           center instead of one single circle. */
-
-        $offsetDegrees = 0.55;
-
-        $extraPoints = [
-            [$latitude + $offsetDegrees, $longitude],
-            [$latitude - $offsetDegrees, $longitude],
-            [$latitude, $longitude + $offsetDegrees],
-            [$latitude, $longitude - $offsetDegrees]
-        ];
-
-        $pointRadius = max(20000, (int)($radius * 0.6));
-
-        foreach ($extraPoints as $point) {
-
-            $pointQuery = $buildOverpassQuery(
-                $pointRadius,
-                $point[0],
-                $point[1],
-                true
-            );
-
-            $extraElements = $fetchSingleServer(
-                $pointQuery,
-                $stickyServer
-            );
-
-            if (!empty($extraElements)) {
-                $elements = array_merge($elements, $extraElements);
-            }
-        }
-    }
-
 
     /* Save to cache for next time. */
 
@@ -1138,6 +1511,16 @@ function getNearbyPlaces(
 
             }
 
+        }
+
+
+        /* Nominatim fallback can carry an explicit category
+           selected from the search query. Use it when OSM tags
+           do not provide enough metadata to classify the place. */
+
+        if (!empty($element["_fallback_category"])) {
+            $category =
+                (string)$element["_fallback_category"];
         }
 
 
