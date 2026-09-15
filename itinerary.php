@@ -814,6 +814,122 @@ $needsGeneration =
 
 
 /* =====================================================
+   PREVENT INFINITE LOADING LOOP
+   =====================================================
+
+   If a generation attempt was just made (via the loading
+   screen below) and it failed to produce anything (e.g.
+   the live map data servers were unreachable), the saved
+   itinerary is still empty - which would make this exact
+   same code think generation is STILL needed, show the
+   loading screen again, try again, fail again... forever.
+
+   The "generated=1" flag marks "we just tried, one way or
+   another" so this specific request renders the normal
+   page (with whatever error message applies) instead of
+   looping back into another loading screen.
+   ===================================================== */
+
+$alreadyAttemptedGeneration =
+    isset($_GET["generated"]) && $_GET["generated"] === "1";
+
+if ($alreadyAttemptedGeneration) {
+    $needsGeneration = false;
+}
+
+
+/* =====================================================
+   ASYNC LOADING SCREEN
+   =====================================================
+
+   Generation can take a few seconds to ~30s depending on
+   the destination and live map data server response time.
+   Previously the browser tab just sat there blank for that
+   whole time. Instead: show a fast, lightweight loading
+   page immediately. Its JavaScript then calls this same
+   URL again with &ajax=1, which does the actual generation
+   work and replies with a small JSON result. Once that
+   finishes, the page reloads into the finished itinerary.
+   ===================================================== */
+
+$isAjaxGenerationRequest =
+    isset($_GET["ajax"]) && $_GET["ajax"] === "1";
+
+if ($needsGeneration && !$isAjaxGenerationRequest) {
+
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Generating your itinerary... - WanderAI</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+
+        <div class="generating-screen">
+
+            <div class="generating-spinner"></div>
+
+            <h1>🤖 WanderAI is building your itinerary...</h1>
+
+            <p>
+                Discovering places, checking opening hours, and
+                planning the best route for
+                <strong><?php echo htmlspecialchars($destination); ?></strong>.
+                This usually takes a few seconds.
+            </p>
+
+            <p class="generating-substep" id="generatingSubstep">
+                Fetching live map data...
+            </p>
+
+        </div>
+
+        <script>
+        (function () {
+            var substeps = [
+                "Fetching live map data...",
+                "Scoring places against your interests...",
+                "Checking opening hours and travel times...",
+                "Building your day-by-day schedule...",
+                "Almost done..."
+            ];
+            var i = 0;
+            var substepEl = document.getElementById("generatingSubstep");
+            var stepTimer = setInterval(function () {
+                i = (i + 1) % substeps.length;
+                substepEl.textContent = substeps[i];
+            }, 3000);
+
+            fetch(window.location.href.split("#")[0] +
+                (window.location.search ? "&" : "?") + "ajax=1")
+                .then(function () {
+                    clearInterval(stepTimer);
+                    window.location.href =
+                        "itinerary.php?trip_id=<?php echo (int)$trip_id; ?>&generated=1";
+                })
+                .catch(function () {
+                    clearInterval(stepTimer);
+                    substepEl.textContent =
+                        "Taking longer than expected - reloading...";
+                    setTimeout(function () {
+                        window.location.href =
+                            "itinerary.php?trip_id=<?php echo (int)$trip_id; ?>&generated=1";
+                    }, 2000);
+                });
+        })();
+        </script>
+
+    </body>
+    </html>
+    <?php
+    exit();
+}
+
+
+/* =====================================================
    FRESH GENERATION / REGENERATION
    ===================================================== */
 
@@ -1308,6 +1424,31 @@ if ($needsGeneration) {
     }
 
 
+    /* =================================================
+       AJAX MODE: generation is done - reply with a
+       small JSON payload and stop here. The loading
+       screen's JavaScript is waiting on this response
+       and will reload the page once it arrives.
+
+       IMPORTANT: $placesMessage (the actual reason if
+       something went wrong) was computed in THIS request,
+       but this request only ever returns JSON - it never
+       renders any HTML. Without stashing it somewhere, the
+       next request (the redirect below) would have no way
+       of knowing what happened, and would show an empty
+       "not found" state with zero explanation. Session is
+       the simplest way to carry it across that boundary.
+       ================================================= */
+
+    $_SESSION["wander_last_places_message"] = $placesMessage;
+
+    if ($isAjaxGenerationRequest) {
+        header("Content-Type: application/json");
+        echo json_encode(["done" => true]);
+        exit();
+    }
+
+
 } else {
 
 
@@ -1326,6 +1467,22 @@ if ($needsGeneration) {
 
     $placesDiscoveredCount =
         $savedPlacesCount;
+
+    /*
+       If we just came back from a failed generation attempt
+       (see $alreadyAttemptedGeneration above) and there is
+       still no saved itinerary, surface the real reason
+       instead of a silent, unexplained empty state.
+    */
+
+    if (
+        empty($savedItinerary) &&
+        !empty($_SESSION["wander_last_places_message"])
+    ) {
+        $placesMessage = $_SESSION["wander_last_places_message"];
+    }
+
+    unset($_SESSION["wander_last_places_message"]);
 }
 
 
@@ -1631,7 +1788,7 @@ $page_title =
         </a>
         <a
             href="budget.php?trip_id=<?php echo $trip_id; ?>"
-            class="itinerary-action-btn"
+            class="itinerary-action-btn budget-trip-action"
 >
             💰 Trip Budget
         </a>
