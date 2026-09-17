@@ -74,36 +74,80 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 
 
-<body class="auth-body">
+<body class="wander-auth-page">
 
 
-    <div class="auth-container">
+    <!-- =========================
+         AUTH NAVBAR
+    ========================== -->
 
-        <div class="auth-card">
+    <header class="wander-auth-navbar">
+
+        <a href="index.php" class="wander-auth-logo">
+
+            <span class="wander-auth-logo-icon">✈</span>
+
+            <span class="wander-auth-logo-text">
+                Wander<span>AI</span>
+            </span>
+
+        </a>
 
 
-            <!-- HEADER -->
+        <div class="wander-auth-nav-right">
 
-            <div class="auth-header">
+            <span>Don't have an account?</span>
 
-                <div style="font-size: 42px; margin-bottom: 10px;">
+            <a href="register.php" class="wander-auth-register-link">
+                Create account
+            </a>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =========================
+         LOGIN SECTION
+    ========================== -->
+
+    <main class="wander-auth-main">
+
+
+        <!-- Background Decoration -->
+
+        <div class="wander-auth-shape wander-auth-shape-one"></div>
+        <div class="wander-auth-shape wander-auth-shape-two"></div>
+
+
+        <section class="wander-auth-card">
+
+
+            <!-- Icon and Heading -->
+
+            <div class="wander-auth-header">
+
+                <div class="wander-auth-icon">
                     ✈
                 </div>
 
                 <h1>Welcome back</h1>
 
                 <p>
-                    Login to continue planning your next amazing journey.
+                    Login to continue planning your
+                    next amazing journey.
                 </p>
 
             </div>
 
 
-            <!-- ERROR / SUCCESS MESSAGE -->
+
+            <!-- Error / Success Message -->
 
             <?php if (!empty($message)): ?>
 
-                <div class="message <?php echo $messageType; ?>">
+                <div class="wander-auth-message <?php echo $messageType; ?>">
 
                     <?php echo htmlspecialchars($message); ?>
 
@@ -112,14 +156,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <?php endif; ?>
 
 
+
             <!-- LOGIN FORM -->
 
-            <form method="POST" action="login.php">
+            <form
+                method="POST"
+                action="login.php"
+                class="wander-auth-form"
+            >
 
 
                 <!-- EMAIL -->
 
-                <div class="auth-form-group">
+                <div class="wander-form-group">
 
                     <label for="email">
                         Email Address
@@ -138,7 +187,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <!-- PASSWORD -->
 
-                <div class="auth-form-group">
+                <div class="wander-form-group">
 
                     <label for="password">
                         Password
@@ -157,8 +206,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <!-- FORGOT PASSWORD -->
 
-                <div style="text-align:right; margin:-4px 0 18px;">
-                    <a href="forgot_password.php" style="font-size:14px; font-weight:600; color:#2563eb; text-decoration:none;">
+                <div class="wander-auth-forgot">
+                    <a href="forgot_password.php">
                         Forgot password?
                     </a>
                 </div>
@@ -168,44 +217,63 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <button
                     type="submit"
-                    class="auth-submit-btn"
+                    class="wander-auth-submit"
                 >
-                    Login →
+
+                    <span>Login</span>
+
+                    <span class="wander-button-arrow">
+                        →
+                    </span>
+
                 </button>
 
 
             </form>
 
 
-            <!-- REGISTER LINK -->
 
-            <div class="auth-footer">
+            <!-- Divider -->
 
-                <p>
-                    Don't have an account?
+            <div class="wander-auth-divider">
 
-                    <a href="register.php">
-                        Create an account
-                    </a>
-                </p>
+                <span></span>
+
+                <p>OR</p>
+
+                <span></span>
 
             </div>
 
 
-            <!-- BACK HOME -->
 
-            <div class="auth-footer">
+            <!-- Register Link -->
 
-                <a href="index.php">
-                    ← Back to Home
+            <p class="wander-auth-bottom-text">
+
+                Don't have an account?
+
+                <a href="register.php">
+                    Create one here
                 </a>
 
-            </div>
+            </p>
 
 
-        </div>
 
-    </div>
+            <!-- Back Home -->
+
+            <a href="index.php" class="wander-back-home">
+
+                <span>←</span>
+                Back to Home
+
+            </a>
+
+
+        </section>
+
+    </main>
 
 
 </body>

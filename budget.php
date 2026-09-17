@@ -1678,6 +1678,15 @@ if (
     border-radius: 10px;
     text-decoration: none;
     font-weight: 600;
+    background: #eef2ff;
+    color: #4338ca;
+    border: 2px solid #c7d2fe;
+    transition: 0.2s ease;
+}
+
+.budget-action-btn:hover {
+    background: #e0e7ff;
+    transform: translateY(-1px);
 }
 
 .budget-alert {
@@ -1734,11 +1743,23 @@ if (
 }
 
 .budget-card {
+    position: relative;
     background: white;
     border-radius: 18px;
     padding: 25px;
     box-shadow:
         0 8px 25px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.budget-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #6366f1, #14b8a6);
 }
 
 .budget-card-icon {

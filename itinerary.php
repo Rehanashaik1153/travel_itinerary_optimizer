@@ -866,7 +866,10 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
         <title>Generating your itinerary... - WanderAI</title>
         <link rel="stylesheet" href="style.css">
     </head>
-    <body>
+    <body class="generating-body">
+
+        <div class="generating-shape generating-shape-one"></div>
+        <div class="generating-shape generating-shape-two"></div>
 
         <div class="generating-screen">
 
@@ -884,6 +887,10 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
             <p class="generating-substep" id="generatingSubstep">
                 Fetching live map data...
             </p>
+
+            <div class="generating-progress">
+                <div class="generating-progress-bar"></div>
+            </div>
 
         </div>
 

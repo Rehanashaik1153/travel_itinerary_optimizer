@@ -186,6 +186,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: 700;
+            background: #6366f1;
+            color: white;
+            transition: 0.2s ease;
+        }
+
+        .select-button button:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
         }
 
 
