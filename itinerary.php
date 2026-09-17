@@ -1636,7 +1636,7 @@ $page_title =
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin=""
     >
-
+    <link rel="stylesheet" href="travel-theme.css">
 </head>
 
 
@@ -3037,10 +3037,7 @@ if (!empty($generatedItinerary)) {
     </div>
 
 
-    <p>
-        Your intelligent travel planning companion.
-    </p>
-
+    
 
     <div class="copyright">
 

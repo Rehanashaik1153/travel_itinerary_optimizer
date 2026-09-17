@@ -14,7 +14,7 @@ html {
 
 body {
     font-family: "Segoe UI", "Poppins", Arial, Helvetica, sans-serif;
-    color: #1e293b;
+    color: #10304a;
     background:
         radial-gradient(circle at 8% 12%, rgba(124, 92, 255, 0.10) 0%, transparent 45%),
         radial-gradient(circle at 92% 8%, rgba(59, 191, 178, 0.10) 0%, transparent 40%),
@@ -55,24 +55,24 @@ textarea {
 }
 
 .dashboard-primary-btn {
-    background: #6366f1;
+    background: #14796f;
     color: white;
-    border: 1px solid #6366f1;
+    border: 1px solid #14796f;
 }
 
 .dashboard-primary-btn:hover {
-    background: #4f46e5;
+    background: #0e5c54;
     transform: translateY(-1px);
 }
 
 .dashboard-secondary-btn {
     background: white;
-    color: #4f46e5;
-    border: 1px solid #c7d2fe;
+    color: #0e5c54;
+    border: 1px solid #b9ded8;
 }
 
 .dashboard-secondary-btn:hover {
-    background: #eef2ff;
+    background: #eaf4f2;
 }
 
 
@@ -107,7 +107,7 @@ textarea {
     justify-content: space-between;
     gap: 25px;
     background: white;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #d3e0de;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -120,7 +120,7 @@ textarea {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #6366f1 0%, #14b8a6 100%);
+    background: linear-gradient(90deg, #14796f 0%, #e08a1e 100%);
 }
 
 .logo {
@@ -128,7 +128,7 @@ textarea {
     align-items: center;
     gap: 9px;
     text-decoration: none;
-    color: #1e293b;
+    color: #10304a;
     font-size: 22px;
     font-weight: 800;
 }
@@ -142,7 +142,7 @@ textarea {
 .plan-trip-header h1 span,
 .my-trips-header h1 span,
 .itinerary-header h1 span {
-    color: #6366f1;
+    color: #14796f;
 }
 
 .dashboard-nav {
@@ -155,19 +155,19 @@ textarea {
     padding: 9px 14px;
     border-radius: 8px;
     text-decoration: none;
-    color: #64748b;
+    color: #5c7488;
     font-weight: 600;
     transition: 0.2s;
 }
 
 .dashboard-nav a:hover {
     background: #f1f5f9;
-    color: #4f46e5;
+    color: #0e5c54;
 }
 
 .dashboard-nav a.active {
-    background: #eef2ff;
-    color: #4f46e5;
+    background: #eaf4f2;
+    color: #0e5c54;
 }
 
 .user-menu {
@@ -183,14 +183,14 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     font-weight: bold;
 }
 
 .user-name {
     font-weight: 600;
-    color: #334155;
+    color: #2b4a5f;
 }
 
 .logout-btn {
@@ -211,7 +211,7 @@ textarea {
    ===================================================== */
 
 .dashboard-small-title {
-    color: #6366f1;
+    color: #14796f;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 1.2px;
@@ -238,14 +238,14 @@ textarea {
 .itinerary-header h1,
 .my-trips-header h1,
 .destination-header h1 {
-    color: #0f172a;
+    color: #10304a;
 }
 
 .plan-trip-header > p:last-child,
 .itinerary-header > div > p:last-child,
 .my-trips-header p,
 .destination-header > p:last-child {
-    color: #64748b;
+    color: #5c7488;
 }
 
 
@@ -299,7 +299,7 @@ textarea {
 .trip-form-card {
     position: relative;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 18px;
     padding: 35px;
     box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
@@ -313,7 +313,7 @@ textarea {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #6366f1, #14b8a6);
+    background: linear-gradient(90deg, #14796f, #e08a1e);
 }
 
 .form-section-title {
@@ -321,7 +321,7 @@ textarea {
     align-items: center;
     gap: 14px;
     padding-bottom: 20px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #d3e0de;
     margin-bottom: 25px;
 }
 
@@ -336,17 +336,17 @@ textarea {
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: #eef2ff;
+    background: #eaf4f2;
     font-size: 23px;
 }
 
 .form-section-title h2 {
     font-size: 22px;
-    color: #0f172a;
+    color: #10304a;
 }
 
 .form-section-title p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -369,7 +369,7 @@ textarea {
 .transport-group > label {
     display: block;
     margin-bottom: 9px;
-    color: #334155;
+    color: #2b4a5f;
     font-weight: 700;
 }
 
@@ -386,7 +386,7 @@ textarea {
 }
 
 .trip-form-group input:focus {
-    border-color: #818cf8;
+    border-color: #4fa79c;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
@@ -397,7 +397,7 @@ textarea {
 
 .input-help {
     margin-top: 7px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 13px;
 }
 
@@ -424,29 +424,29 @@ textarea {
     display: inline-block;
     padding: 10px 15px;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #d3e0de;
     border-radius: 9px;
-    color: #475569;
+    color: #4a6275;
     transition: 0.2s;
 }
 
 .interest-option input:checked + span,
 .transport-option input:checked + span {
-    background: #eef2ff;
-    color: #4f46e5;
-    border-color: #818cf8;
+    background: #eaf4f2;
+    color: #0e5c54;
+    border-color: #4fa79c;
 }
 
 .trip-form-submit {
     margin-top: 35px;
     text-align: center;
     padding-top: 25px;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #d3e0de;
 }
 
 .trip-form-submit button {
     border: none;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     padding: 15px 28px;
     border-radius: 10px;
@@ -457,12 +457,12 @@ textarea {
 }
 
 .trip-form-submit button:hover {
-    background: #4f46e5;
+    background: #0e5c54;
     transform: translateY(-1px);
 }
 
 .trip-form-submit p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 13px;
     margin-top: 12px;
 }
@@ -486,7 +486,7 @@ textarea {
     background: white;
     padding: 28px;
     border-radius: 18px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
 }
 
@@ -504,13 +504,13 @@ textarea {
 }
 
 .destination-search input:focus {
-    border-color: #818cf8;
+    border-color: #4fa79c;
 }
 
 .destination-search button,
 .select-button button {
     border: none;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     padding: 14px 22px;
     border-radius: 9px;
@@ -523,12 +523,12 @@ textarea {
     margin-top: 15px;
     padding: 20px;
     border-radius: 12px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     transition: 0.2s;
 }
 
 .destination-result:hover {
-    border-color: #a5b4fc;
+    border-color: #8cc7bf;
     box-shadow: 0 5px 18px rgba(99, 102, 241, 0.08);
 }
 
@@ -539,7 +539,7 @@ textarea {
 
 .coordinates {
     margin-top: 10px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -563,7 +563,7 @@ textarea {
     background: white;
     padding: 40px;
     border-radius: 18px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
     text-align: center;
 }
@@ -577,7 +577,7 @@ textarea {
     font-size: 20px;
     font-weight: 700;
     margin: 20px 0;
-    color: #0f172a;
+    color: #10304a;
 }
 
 .coordinate-row {
@@ -594,8 +594,8 @@ textarea {
     padding: 9px 16px;
     border-radius: 999px;
     background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    color: #4a6275;
+    border: 1px solid #d3e0de;
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
@@ -603,9 +603,9 @@ textarea {
 }
 
 .change-btn:hover {
-    background: #eef2ff;
-    color: #4f46e5;
-    border-color: #c7d2fe;
+    background: #eaf4f2;
+    color: #0e5c54;
+    border-color: #b9ded8;
 }
 
 
@@ -648,11 +648,11 @@ textarea {
 
 a.edit-trip-action.itinerary-action-btn {
     background: #f1f5f9;
-    color: #334155;
+    color: #2b4a5f;
 }
 
 a.regenerate-action.itinerary-action-btn {
-    background: #6366f1;
+    background: #14796f;
     color: #ffffff;
 }
 
@@ -686,7 +686,7 @@ a.budget-trip-action.itinerary-action-btn {
 .trip-summary-card {
     background: white;
     padding: 18px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -696,7 +696,7 @@ a.budget-trip-action.itinerary-action-btn {
 .summary-icon {
     width: 45px;
     height: 45px;
-    background: #eef2ff;
+    background: #eaf4f2;
     border-radius: 11px;
     display: flex;
     align-items: center;
@@ -708,13 +708,13 @@ a.budget-trip-action.itinerary-action-btn {
 .preference-details span {
     display: block;
     font-size: 12px;
-    color: #64748b;
+    color: #5c7488;
     margin-bottom: 3px;
 }
 
 .trip-summary-card strong,
 .preference-details strong {
-    color: #1e293b;
+    color: #10304a;
 }
 
 
@@ -724,7 +724,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .itinerary-preferences {
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 16px;
     padding: 25px;
     margin-bottom: 30px;
@@ -749,8 +749,8 @@ a.budget-trip-action.itinerary-action-btn {
     display: flex;
     align-items: center;
     gap: 20px;
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
+    background: #eaf4f2;
+    border: 1px solid #b9ded8;
     padding: 25px;
     border-radius: 16px;
     margin-top: 25px;
@@ -765,7 +765,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .ai-itinerary-card p {
-    color: #475569;
+    color: #4a6275;
 }
 
 
@@ -795,7 +795,7 @@ a.budget-trip-action.itinerary-action-btn {
 .recommended-place-card,
 .accommodation-card {
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 15px;
     padding: 22px;
     box-shadow: 0 5px 20px rgba(15, 23, 42, 0.05);
@@ -819,7 +819,7 @@ a.budget-trip-action.itinerary-action-btn {
 .timeline-category {
     display: inline-block;
     background: #f1f5f9;
-    color: #475569;
+    color: #4a6275;
     padding: 5px 10px;
     border-radius: 20px;
     font-size: 12px;
@@ -829,7 +829,7 @@ a.budget-trip-action.itinerary-action-btn {
 .timeline-map {
     display: inline-block;
     margin-top: 10px;
-    color: #4f46e5;
+    color: #0e5c54;
     text-decoration: none;
     font-weight: 700;
 }
@@ -846,7 +846,7 @@ a.budget-trip-action.itinerary-action-btn {
 .day-card {
     position: relative;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 18px;
     padding: 28px;
     margin-top: 22px;
@@ -861,7 +861,7 @@ a.budget-trip-action.itinerary-action-btn {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #6366f1, #14b8a6);
+    background: linear-gradient(90deg, #14796f, #e08a1e);
 }
 
 .day-title {
@@ -869,15 +869,15 @@ a.budget-trip-action.itinerary-action-btn {
     align-items: center;
     gap: 15px;
     padding-bottom: 20px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #d3e0de;
 }
 
 .day-number {
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: #eef2ff;
-    color: #4f46e5;
+    background: #eaf4f2;
+    color: #0e5c54;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -892,7 +892,7 @@ a.budget-trip-action.itinerary-action-btn {
 .timeline-item {
     position: relative;
     padding: 0 0 30px 32px;
-    border-left: 2px solid #e2e8f0;
+    border-left: 2px solid #d3e0de;
 }
 
 .timeline-item:last-child {
@@ -907,12 +907,12 @@ a.budget-trip-action.itinerary-action-btn {
     left: -9px;
     top: 4px;
     border-radius: 50%;
-    background: #6366f1;
+    background: #14796f;
 }
 
 .timeline-time {
     font-weight: 700;
-    color: #4f46e5;
+    color: #0e5c54;
     margin-bottom: 7px;
 }
 
@@ -924,7 +924,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .timeline-details {
     margin-top: 10px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -993,7 +993,7 @@ a.budget-trip-action.itinerary-action-btn {
 .trip-card {
     position: relative;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 18px;
     padding: 25px;
     box-shadow: 0 5px 20px rgba(15, 23, 42, 0.06);
@@ -1008,7 +1008,7 @@ a.budget-trip-action.itinerary-action-btn {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #6366f1, #14b8a6);
+    background: linear-gradient(90deg, #14796f, #e08a1e);
 }
 
 .trip-card:hover {
@@ -1029,8 +1029,8 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .trip-id {
-    background: #eef2ff;
-    color: #4f46e5;
+    background: #eaf4f2;
+    color: #0e5c54;
     padding: 5px 10px;
     border-radius: 20px;
     font-size: 12px;
@@ -1053,12 +1053,12 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .trip-info-item span {
-    color: #64748b;
+    color: #5c7488;
 }
 
 .trip-info-item strong {
     text-align: right;
-    color: #334155;
+    color: #2b4a5f;
 }
 
 .trip-actions {
@@ -1079,7 +1079,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .view-itinerary-btn {
     flex: 1;
-    background: #6366f1;
+    background: #14796f;
     color: white;
 }
 
@@ -1095,7 +1095,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .empty-trips {
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 18px;
     padding: 60px 25px;
     text-align: center;
@@ -1116,14 +1116,14 @@ a.budget-trip-action.itinerary-action-btn {
     padding: 35px 20px;
     text-align: center;
     background: white;
-    border-top: 1px solid #e5e7eb;
-    color: #64748b;
+    border-top: 1px solid #d3e0de;
+    color: #5c7488;
 }
 
 .footer-logo {
     font-size: 20px;
     font-weight: 800;
-    color: #1e293b;
+    color: #10304a;
     margin-bottom: 8px;
 }
 
@@ -1149,7 +1149,7 @@ a.budget-trip-action.itinerary-action-btn {
     padding: 25px;
     background: linear-gradient(
         135deg,
-        #eef2ff,
+        #eaf4f2,
         #f8fafc,
         #e0f2fe
     );
@@ -1174,11 +1174,11 @@ a.budget-trip-action.itinerary-action-btn {
 
 .auth-header h1 {
     margin-bottom: 8px;
-    color: #0f172a;
+    color: #10304a;
 }
 
 .auth-header p {
-    color: #64748b;
+    color: #5c7488;
 }
 
 .auth-form-group {
@@ -1200,7 +1200,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .auth-form-group input:focus {
-    border-color: #818cf8;
+    border-color: #4fa79c;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
@@ -1209,24 +1209,24 @@ a.budget-trip-action.itinerary-action-btn {
     padding: 14px;
     border: none;
     border-radius: 9px;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     font-weight: 700;
     cursor: pointer;
 }
 
 .auth-submit-btn:hover {
-    background: #4f46e5;
+    background: #0e5c54;
 }
 
 .auth-footer {
     text-align: center;
     margin-top: 20px;
-    color: #64748b;
+    color: #5c7488;
 }
 
 .auth-footer a {
-    color: #4f46e5;
+    color: #0e5c54;
     font-weight: 700;
     text-decoration: none;
 }
@@ -1385,7 +1385,7 @@ a.budget-trip-action.itinerary-action-btn {
         radial-gradient(circle at 6% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 35%),
         radial-gradient(circle at 96% 6%, rgba(20, 184, 166, 0.05) 0%, transparent 32%),
         #ffffff;
-    color: #1e293b;
+    color: #10304a;
 }
 
 
@@ -1412,14 +1412,14 @@ a.budget-trip-action.itinerary-action-btn {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #1e293b;
+    color: #10304a;
     text-decoration: none;
     font-size: 22px;
     font-weight: 800;
 }
 
 .reference-logo-icon {
-    color: #6366f1;
+    color: #14796f;
     font-size: 25px;
 }
 
@@ -1431,14 +1431,14 @@ a.budget-trip-action.itinerary-action-btn {
 
 .reference-nav-links a {
     text-decoration: none;
-    color: #475569;
+    color: #4a6275;
     font-size: 14px;
     font-weight: 600;
     transition: 0.2s;
 }
 
 .reference-nav-links a:hover {
-    color: #6366f1;
+    color: #14796f;
 }
 
 .reference-nav-buttons {
@@ -1449,18 +1449,18 @@ a.budget-trip-action.itinerary-action-btn {
 
 .reference-login-btn {
     text-decoration: none;
-    color: #475569;
+    color: #4a6275;
     font-weight: 600;
     font-size: 14px;
 }
 
 .reference-login-btn:hover {
-    color: #6366f1;
+    color: #14796f;
 }
 
 .reference-start-btn {
     text-decoration: none;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     padding: 11px 20px;
     border-radius: 8px;
@@ -1470,7 +1470,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .reference-start-btn:hover {
-    background: #4f46e5;
+    background: #0e5c54;
     transform: translateY(-1px);
 }
 
@@ -1526,11 +1526,11 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .reference-hero-content h1 span {
-    color: #a5b4fc;
+    color: #8cc7bf;
 }
 
 .reference-hero-content p {
-    color: #e2e8f0;
+    color: #d3e0de;
     font-size: 18px;
     line-height: 1.7;
     margin-bottom: 30px;
@@ -1551,7 +1551,7 @@ a.budget-trip-action.itinerary-action-btn {
     align-items: center;
     gap: 18px;
     text-decoration: none;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     padding: 15px 23px;
     border-radius: 9px;
@@ -1564,7 +1564,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .reference-plan-btn:hover {
-    background: #4f46e5;
+    background: #0e5c54;
     transform: translateY(-2px);
 }
 
@@ -1634,7 +1634,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .reference-small-title {
     display: inline-block;
-    color: #6366f1;
+    color: #14796f;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 1.5px;
@@ -1642,13 +1642,13 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .reference-section-heading h2 {
-    color: #0f172a;
+    color: #10304a;
     font-size: 36px;
     line-height: 1.3;
 }
 
 .reference-section-heading h2 span {
-    color: #6366f1;
+    color: #14796f;
 }
 
 
@@ -1677,7 +1677,7 @@ a.budget-trip-action.itinerary-action-btn {
     position: relative;
 
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #d3e0de;
     border-radius: 16px;
 
     box-shadow: 0 8px 25px rgba(15, 23, 42, 0.05);
@@ -1707,8 +1707,8 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .blue-step-icon {
-    background: #e0e7ff;
-    color: #4f46e5;
+    background: #d7ebe7;
+    color: #0e5c54;
 }
 
 .green-step-icon {
@@ -1722,13 +1722,13 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .step-content h3 {
-    color: #0f172a;
+    color: #10304a;
     margin-bottom: 8px;
     font-size: 19px;
 }
 
 .step-content p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -1759,7 +1759,7 @@ a.budget-trip-action.itinerary-action-btn {
 .reference-feature-card {
     background: white;
     padding: 28px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 16px;
 
     transition: 0.25s;
@@ -1784,7 +1784,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .blue-feature {
-    background: #e0e7ff;
+    background: #d7ebe7;
 }
 
 .green-feature {
@@ -1800,13 +1800,13 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .reference-feature-card h3 {
-    color: #0f172a;
+    color: #10304a;
     margin-bottom: 10px;
     font-size: 18px;
 }
 
 .reference-feature-card p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -1880,7 +1880,7 @@ a.budget-trip-action.itinerary-action-btn {
     left: 20px;
     bottom: 18px;
 
-    color: #e2e8f0;
+    color: #d3e0de;
     font-size: 13px;
 }
 
@@ -1905,8 +1905,8 @@ a.budget-trip-action.itinerary-action-btn {
     background:
         linear-gradient(
             135deg,
-            #4f46e5,
-            #6366f1,
+            #0e5c54,
+            #14796f,
             #7c3aed
         );
 
@@ -1955,7 +1955,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .reference-cta-text p {
-    color: #e0e7ff;
+    color: #d7ebe7;
 }
 
 .reference-cta-button {
@@ -1964,7 +1964,7 @@ a.budget-trip-action.itinerary-action-btn {
     gap: 18px;
 
     background: white;
-    color: #4f46e5;
+    color: #0e5c54;
 
     padding: 15px 22px;
     border-radius: 9px;
@@ -1986,7 +1986,7 @@ a.budget-trip-action.itinerary-action-btn {
    ===================================================== */
 
 .reference-footer {
-    background: #0f172a;
+    background: #10304a;
     color: white;
     padding: 65px 8% 25px;
 }
@@ -2044,7 +2044,7 @@ a.budget-trip-action.itinerary-action-btn {
     align-items: center;
     justify-content: center;
 
-    background: #1e293b;
+    background: #10304a;
     border-radius: 50%;
 }
 
@@ -2053,9 +2053,9 @@ a.budget-trip-action.itinerary-action-btn {
     margin: 50px auto 0;
     padding-top: 20px;
 
-    border-top: 1px solid #334155;
+    border-top: 1px solid #2b4a5f;
 
-    color: #64748b;
+    color: #5c7488;
     text-align: center;
     font-size: 13px;
 }
@@ -2224,7 +2224,7 @@ a.budget-trip-action.itinerary-action-btn {
         radial-gradient(circle at 98% 6%, rgba(20, 184, 166, 0.06) 0%, transparent 36%),
         linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
     background-attachment: fixed;
-    color: #1e293b;
+    color: #10304a;
 }
 
 
@@ -2241,7 +2241,7 @@ a.budget-trip-action.itinerary-action-btn {
     justify-content: space-between;
     gap: 25px;
     background: white;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #d3e0de;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -2254,7 +2254,7 @@ a.budget-trip-action.itinerary-action-btn {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #6366f1 0%, #14b8a6 100%);
+    background: linear-gradient(90deg, #14796f 0%, #e08a1e 100%);
 }
 
 .wander-dashboard-logo {
@@ -2262,7 +2262,7 @@ a.budget-trip-action.itinerary-action-btn {
     align-items: center;
     gap: 9px;
     text-decoration: none;
-    color: #1e293b;
+    color: #10304a;
     font-size: 22px;
     font-weight: 800;
 }
@@ -2272,7 +2272,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-dashboard-logo span span {
-    color: #6366f1;
+    color: #14796f;
 }
 
 
@@ -2288,19 +2288,19 @@ a.budget-trip-action.itinerary-action-btn {
     padding: 9px 14px;
     border-radius: 8px;
     text-decoration: none;
-    color: #64748b;
+    color: #5c7488;
     font-weight: 600;
     transition: 0.2s ease;
 }
 
 .wander-dashboard-nav a:hover {
     background: #f1f5f9;
-    color: #4f46e5;
+    color: #0e5c54;
 }
 
 .wander-dashboard-nav a.active {
-    background: #eef2ff;
-    color: #4f46e5;
+    background: #eaf4f2;
+    color: #0e5c54;
 }
 
 
@@ -2319,14 +2319,14 @@ a.budget-trip-action.itinerary-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     font-weight: bold;
 }
 
 .wander-user-name {
     font-weight: 600;
-    color: #334155;
+    color: #2b4a5f;
 }
 
 .wander-logout-btn {
@@ -2364,11 +2364,11 @@ a.budget-trip-action.itinerary-action-btn {
     border-radius: 24px;
     background: linear-gradient(
         135deg,
-        #eef2ff 0%,
+        #eaf4f2 0%,
         #f5f3ff 50%,
         #e0f2fe 100%
     );
-    border: 1px solid #e0e7ff;
+    border: 1px solid #d7ebe7;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2387,7 +2387,7 @@ a.budget-trip-action.itinerary-action-btn {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    color: #6366f1;
+    color: #14796f;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 1.2px;
@@ -2401,17 +2401,17 @@ a.budget-trip-action.itinerary-action-btn {
 .wander-dashboard-welcome h1 {
     font-size: 40px;
     line-height: 1.2;
-    color: #0f172a;
+    color: #10304a;
     margin-bottom: 15px;
 }
 
 .wander-dashboard-welcome h1 span {
-    color: #6366f1;
+    color: #14796f;
 }
 
 .wander-dashboard-welcome p {
     max-width: 600px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 16px;
     line-height: 1.7;
     margin-bottom: 25px;
@@ -2427,7 +2427,7 @@ a.budget-trip-action.itinerary-action-btn {
     gap: 10px;
     padding: 14px 21px;
     border-radius: 10px;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     text-decoration: none;
     font-weight: 700;
@@ -2436,7 +2436,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-dashboard-primary-btn:hover {
-    background: #4f46e5;
+    background: #0e5c54;
     transform: translateY(-2px);
 }
 
@@ -2496,7 +2496,7 @@ a.budget-trip-action.itinerary-action-btn {
     position: absolute;
     width: 190px;
     height: 100px;
-    border-top: 3px dashed #818cf8;
+    border-top: 3px dashed #4fa79c;
     border-radius: 50%;
     left: 45px;
     top: 110px;
@@ -2524,20 +2524,20 @@ a.budget-trip-action.itinerary-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #eef2ff;
-    color: #6366f1;
+    background: #eaf4f2;
+    color: #14796f;
 }
 
 .wander-visual-card strong {
     display: block;
     font-size: 13px;
-    color: #1e293b;
+    color: #10304a;
 }
 
 .wander-visual-card small {
     display: block;
     margin-top: 2px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 11px;
 }
 
@@ -2557,7 +2557,7 @@ a.budget-trip-action.itinerary-action-btn {
     background: white;
     padding: 24px;
     border-radius: 17px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -2574,7 +2574,7 @@ a.budget-trip-action.itinerary-action-btn {
     width: 54px;
     height: 54px;
     border-radius: 13px;
-    background: #eef2ff;
+    background: #eaf4f2;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2584,14 +2584,14 @@ a.budget-trip-action.itinerary-action-btn {
 
 .wander-stat-card span {
     display: block;
-    color: #64748b;
+    color: #5c7488;
     font-size: 13px;
     margin-bottom: 3px;
 }
 
 .wander-stat-card strong {
     display: block;
-    color: #0f172a;
+    color: #10304a;
     font-size: 25px;
     line-height: 1.3;
 }
@@ -2621,7 +2621,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-dashboard-section-header h2 {
-    color: #0f172a;
+    color: #10304a;
     font-size: 28px;
 }
 
@@ -2629,7 +2629,7 @@ a.budget-trip-action.itinerary-action-btn {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    color: #4f46e5;
+    color: #0e5c54;
     text-decoration: none;
     font-weight: 700;
 }
@@ -2653,7 +2653,7 @@ a.budget-trip-action.itinerary-action-btn {
     min-height: 255px;
     padding: 25px;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 17px;
     text-decoration: none;
     color: inherit;
@@ -2664,7 +2664,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .wander-quick-action-card:hover {
     transform: translateY(-5px);
-    border-color: #a5b4fc;
+    border-color: #8cc7bf;
     box-shadow: 0 12px 30px rgba(99, 102, 241, 0.1);
 }
 
@@ -2674,20 +2674,20 @@ a.budget-trip-action.itinerary-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #eef2ff;
+    background: #eaf4f2;
     border-radius: 12px;
     font-size: 24px;
     margin-bottom: 20px;
 }
 
 .wander-quick-action-card h3 {
-    color: #1e293b;
+    color: #10304a;
     font-size: 18px;
     margin-bottom: 10px;
 }
 
 .wander-quick-action-card p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
     line-height: 1.6;
 }
@@ -2695,7 +2695,7 @@ a.budget-trip-action.itinerary-action-btn {
 .wander-quick-action-card > span {
     margin-top: auto;
     padding-top: 20px;
-    color: #4f46e5;
+    color: #0e5c54;
     font-size: 14px;
     font-weight: 700;
 }
@@ -2708,7 +2708,7 @@ a.budget-trip-action.itinerary-action-btn {
 .wander-empty-trips {
     padding: 55px 25px;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 18px;
     text-align: center;
 }
@@ -2719,14 +2719,14 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-empty-trips h3 {
-    color: #1e293b;
+    color: #10304a;
     margin-bottom: 8px;
 }
 
 .wander-empty-trips p {
     max-width: 480px;
     margin: 0 auto 22px;
-    color: #64748b;
+    color: #5c7488;
 }
 
 .wander-dashboard-secondary-btn {
@@ -2735,8 +2735,8 @@ a.budget-trip-action.itinerary-action-btn {
     gap: 8px;
     padding: 12px 19px;
     background: white;
-    color: #4f46e5;
-    border: 1px solid #c7d2fe;
+    color: #0e5c54;
+    border: 1px solid #b9ded8;
     border-radius: 10px;
     text-decoration: none;
     font-weight: 700;
@@ -2744,7 +2744,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-dashboard-secondary-btn:hover {
-    background: #eef2ff;
+    background: #eaf4f2;
 }
 
 
@@ -2760,7 +2760,7 @@ a.budget-trip-action.itinerary-action-btn {
 
 .wander-recent-trip-card {
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d3e0de;
     border-radius: 18px;
     padding: 25px;
     box-shadow: 0 5px 20px rgba(15, 23, 42, 0.04);
@@ -2786,13 +2786,13 @@ a.budget-trip-action.itinerary-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #eef2ff;
+    background: #eaf4f2;
     font-size: 21px;
 }
 
 .wander-trip-card-top > span {
     background: #f8fafc;
-    color: #64748b;
+    color: #5c7488;
     padding: 5px 9px;
     border-radius: 20px;
     font-size: 11px;
@@ -2800,7 +2800,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-recent-trip-card h3 {
-    color: #0f172a;
+    color: #10304a;
     font-size: 21px;
     margin-bottom: 17px;
 }
@@ -2814,7 +2814,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-trip-details p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -2827,7 +2827,7 @@ a.budget-trip-action.itinerary-action-btn {
     padding: 10px 12px;
     border-radius: 9px;
     background: #f8fafc;
-    color: #475569;
+    color: #4a6275;
     font-size: 13px;
 }
 
@@ -2839,7 +2839,7 @@ a.budget-trip-action.itinerary-action-btn {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: #6366f1;
+    background: #14796f;
     color: white;
     text-decoration: none;
     font-weight: 700;
@@ -2847,7 +2847,7 @@ a.budget-trip-action.itinerary-action-btn {
 }
 
 .wander-trip-view-btn:hover {
-    background: #4f46e5;
+    background: #0e5c54;
 }
 
 
@@ -2860,22 +2860,22 @@ a.budget-trip-action.itinerary-action-btn {
     padding: 38px 20px;
     text-align: center;
     background: white;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #d3e0de;
 }
 
 .wander-dashboard-footer-logo {
     margin-bottom: 8px;
-    color: #1e293b;
+    color: #10304a;
     font-size: 21px;
     font-weight: 800;
 }
 
 .wander-dashboard-footer-logo span {
-    color: #6366f1;
+    color: #14796f;
 }
 
 .wander-dashboard-footer p {
-    color: #64748b;
+    color: #5c7488;
     margin-bottom: 12px;
 }
 
@@ -3065,7 +3065,7 @@ body.wander-auth-page {
     min-height: 100vh;
     margin: 0;
     background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 48%, #e0f2fe 100%);
-    color: #1e293b;
+    color: #10304a;
     overflow-x: hidden;
 }
 
@@ -3077,7 +3077,7 @@ body.wander-auth-page {
     align-items: center;
     justify-content: space-between;
     background: rgba(255,255,255,.94);
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #d3e0de;
     box-shadow: 0 4px 20px rgba(15,23,42,.06);
     position: relative;
     z-index: 5;
@@ -3088,7 +3088,7 @@ body.wander-auth-page {
     align-items: center;
     gap: 10px;
     text-decoration: none;
-    color: #0f172a;
+    color: #10304a;
 }
 
 .wander-auth-logo-icon {
@@ -3098,7 +3098,7 @@ body.wander-auth-page {
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: linear-gradient(135deg,#2563eb,#0ea5e9);
+    background: linear-gradient(135deg,#0e5c54,#0ea5e9);
     color: #fff;
     font-size: 20px;
     box-shadow: 0 8px 20px rgba(37,99,235,.22);
@@ -3111,29 +3111,29 @@ body.wander-auth-page {
 }
 
 .wander-auth-logo-text span {
-    color: #2563eb;
+    color: #0e5c54;
 }
 
 .wander-auth-nav-right {
     display: flex;
     align-items: center;
     gap: 12px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
 .wander-auth-register-link {
     padding: 9px 18px;
-    border: 1px solid #2563eb;
+    border: 1px solid #0e5c54;
     border-radius: 9px;
-    color: #2563eb;
+    color: #0e5c54;
     text-decoration: none;
     font-weight: 700;
     transition: .2s ease;
 }
 
 .wander-auth-register-link:hover {
-    background: #2563eb;
+    background: #0e5c54;
     color: #fff;
 }
 
@@ -3199,7 +3199,7 @@ body.wander-auth-page {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg,#2563eb,#0ea5e9);
+    background: linear-gradient(135deg,#0e5c54,#0ea5e9);
     color: #fff;
     font-size: 26px;
     box-shadow: 0 10px 25px rgba(37,99,235,.25);
@@ -3207,14 +3207,14 @@ body.wander-auth-page {
 
 .wander-auth-header h1 {
     margin: 0 0 7px;
-    color: #0f172a;
+    color: #10304a;
     font-size: 30px;
     line-height: 1.2;
 }
 
 .wander-auth-header p {
     margin: 0;
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
@@ -3265,7 +3265,7 @@ body.wander-auth-page {
 .wander-form-group label {
     display: block;
     margin-bottom: 7px;
-    color: #334155;
+    color: #2b4a5f;
     font-size: 14px;
     font-weight: 700;
 }
@@ -3277,7 +3277,7 @@ body.wander-auth-page {
     border: 1px solid #cbd5e1;
     border-radius: 10px;
     background: #fff;
-    color: #0f172a;
+    color: #10304a;
     outline: none;
     transition: border-color .2s ease, box-shadow .2s ease;
 }
@@ -3287,7 +3287,7 @@ body.wander-auth-page {
 }
 
 .wander-form-group input:focus {
-    border-color: #2563eb;
+    border-color: #0e5c54;
     box-shadow: 0 0 0 4px rgba(37,99,235,.11);
 }
 
@@ -3298,7 +3298,7 @@ body.wander-auth-page {
     padding: 12px 17px;
     border: none;
     border-radius: 11px;
-    background: linear-gradient(135deg,#2563eb,#0ea5e9);
+    background: linear-gradient(135deg,#0e5c54,#0ea5e9);
     color: #fff;
     display: flex;
     align-items: center;
@@ -3336,7 +3336,7 @@ body.wander-auth-page {
 .wander-auth-divider span {
     flex: 1;
     height: 1px;
-    background: #e2e8f0;
+    background: #d3e0de;
 }
 
 .wander-auth-divider p {
@@ -3349,12 +3349,12 @@ body.wander-auth-page {
 .wander-auth-bottom-text {
     margin: 0;
     text-align: center;
-    color: #64748b;
+    color: #5c7488;
     font-size: 14px;
 }
 
 .wander-auth-bottom-text a {
-    color: #2563eb;
+    color: #0e5c54;
     font-weight: 800;
     text-decoration: none;
 }
@@ -3369,14 +3369,14 @@ body.wander-auth-page {
     align-items: center;
     gap: 7px;
     margin-top: 20px;
-    color: #64748b;
+    color: #5c7488;
     font-size: 13px;
     font-weight: 700;
     text-decoration: none;
 }
 
 .wander-back-home:hover {
-    color: #2563eb;
+    color: #0e5c54;
 }
 
 @media (max-width: 600px) {
@@ -3419,7 +3419,7 @@ body.wander-auth-page {
     background:
         radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.10) 0%, transparent 45%),
         radial-gradient(circle at 90% 15%, rgba(20, 184, 166, 0.09) 0%, transparent 42%),
-        linear-gradient(135deg, #f8fafc 0%, #eef2ff 55%, #f0fdfa 100%);
+        linear-gradient(135deg, #f8fafc 0%, #eaf4f2 55%, #f0fdfa 100%);
     position: relative;
     overflow: hidden;
 }
@@ -3467,7 +3467,7 @@ body.wander-auth-page {
     margin: 0 auto 28px auto;
     border-radius: 50%;
     border: 5px solid #ece7ff;
-    border-top-color: #7c5cff;
+    border-top-color: #14796f;
     animation: wanderSpin 0.9s linear infinite;
 }
 
@@ -3480,11 +3480,11 @@ body.wander-auth-page {
 .generating-screen h1 {
     font-size: 22px;
     margin-bottom: 12px;
-    color: #0f172a;
+    color: #10304a;
 }
 
 .generating-screen p {
-    color: #64748b;
+    color: #5c7488;
     font-size: 15px;
     line-height: 1.6;
 }
@@ -3492,7 +3492,7 @@ body.wander-auth-page {
 .generating-substep {
     margin-top: 18px;
     font-style: italic;
-    color: #7c5cff !important;
+    color: #14796f !important;
 }
 
 .generating-progress {
@@ -3507,7 +3507,7 @@ body.wander-auth-page {
     height: 100%;
     width: 40%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #6366f1, #14b8a6);
+    background: linear-gradient(90deg, #14796f, #e08a1e);
     animation: wanderProgress 1.6s ease-in-out infinite;
 }
 

@@ -8,6 +8,7 @@
     <title>WanderAI | AI Travel Itinerary Optimizer</title>
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="travel-theme.css">
 </head>
 
 <body class="landing-body">

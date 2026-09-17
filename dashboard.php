@@ -89,6 +89,7 @@ $stmt->close();
     <title>Dashboard | WanderAI</title>
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="travel-theme.css">
 
 </head>
 
@@ -720,14 +721,12 @@ $stmt->close();
         <span>✈</span>
 
         Wander<span>AI</span>
+        
 
     </div>
 
 
-    <p>
-        Your intelligent travel planning companion.
-    </p>
-
+            
 
     <div class="wander-dashboard-copyright">
         © 2026 WanderAI — AI Travel Itinerary Optimizer

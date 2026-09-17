@@ -406,6 +406,7 @@ $page_title =
         rel="stylesheet"
         href="style.css"
     >
+    <link rel="stylesheet" href="travel-theme.css">
 
 </head>
 
@@ -1028,15 +1029,44 @@ $page_title =
         ✈ Wander<span>AI</span>
     </div>
 
-    <p>
-        Your intelligent travel planning companion.
-    </p>
+    
 
     <div class="copyright">
         © 2026 WanderAI — AI Travel Itinerary Optimizer
     </div>
 
 </footer>
+
+
+<?php if (is_numeric($latitude) && is_numeric($longitude) && (float)$latitude != 0 && (float)$longitude != 0): ?>
+<script>
+/* =====================================================
+   PREWARM THE PLACES CACHE
+   =====================================================
+
+   The destination is already known at this point, but the
+   user still has to fill in dates, budget, interests and
+   transport - usually 20-60 seconds of typing. We use that
+   time to fetch the live map data in the background, so the
+   moment they press "Generate", the data is already cached
+   locally and the itinerary appears almost immediately.
+
+   Completely optional: if it fails, nothing breaks.
+   ===================================================== */
+(function () {
+
+    var url = "prewarm_places.php" +
+        "?lat=<?php echo rawurlencode((string)$latitude); ?>" +
+        "&lng=<?php echo rawurlencode((string)$longitude); ?>" +
+        "&destination=<?php echo rawurlencode((string)$selected_destination); ?>";
+
+    try {
+        fetch(url, { credentials: "same-origin" }).catch(function () {});
+    } catch (e) {}
+
+})();
+</script>
+<?php endif; ?>
 
 </body>
 </html>

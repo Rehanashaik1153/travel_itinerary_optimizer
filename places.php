@@ -116,17 +116,20 @@ function getNearbyPlaces(
     }
 
     $cacheKey = sprintf(
-        "%s_%.3f_%.3f_%d",
+        "%s_%.2f_%.2f_%d",
         $isBroadDestination ? "broad" : "local",
-        round($latitude, 3),
-        round($longitude, 3),
+        round($latitude, 2),
+        round($longitude, 2),
         $radius
     );
 
     $cacheFile =
         $cacheDir . "/" . md5($cacheKey) . ".json";
 
-    $cacheMaxAgeSeconds = 6 * 60 * 60; // 6 hours
+    $cacheMaxAgeSeconds = 7 * 24 * 60 * 60; // 7 days - tourist attractions
+                                             // do not change hour to hour,
+                                             // and a long TTL is what makes
+                                             // repeat generation instant.
 
     if (
         is_file($cacheFile) &&
@@ -148,6 +151,66 @@ function getNearbyPlaces(
             goto placesCacheHit;
         }
     }
+
+
+    /* =============================================
+       SINGLE-FLIGHT LOCK
+       =============================================
+
+       The background prewarm and the itinerary page can ask
+       for the same area at almost the same moment. Without a
+       lock both would fire their own slow Overpass request
+       and the user would wait for the second one for nothing.
+
+       If a fetch for this exact area is already in progress,
+       wait for its result instead of starting another.
+       ============================================= */
+
+    $lockFile = $cacheFile . ".lock";
+
+    if (
+        is_file($lockFile) &&
+        (time() - filemtime($lockFile)) < 30
+    ) {
+
+        $waitUntil = microtime(true) + 20;
+
+        while (microtime(true) < $waitUntil) {
+
+            usleep(400000);
+
+            clearstatcache(true, $cacheFile);
+
+            if (is_file($cacheFile)) {
+
+                $cached = json_decode(
+                    @file_get_contents($cacheFile),
+                    true
+                );
+
+                if (
+                    is_array($cached) &&
+                    !empty($cached["elements"])
+                ) {
+
+                    $elements = $cached["elements"];
+
+                    $placesResponse = ["success" => true];
+                    $accommodationResponse = ["success" => true];
+
+                    goto placesCacheHit;
+                }
+            }
+
+            clearstatcache(true, $lockFile);
+
+            if (!is_file($lockFile)) {
+                break;
+            }
+        }
+    }
+
+    @touch($lockFile);
 
 
     /* =============================================
@@ -180,7 +243,7 @@ function getNearbyPlaces(
         $light = false
     ) {
 
-        $timeoutSeconds = $light ? 20 : 25;
+        $timeoutSeconds = $light ? 10 : 14;
 
         $clauses = [];
 
@@ -234,7 +297,7 @@ function getNearbyPlaces(
         return
             "[out:json][timeout:" . $timeoutSeconds . "];\n(\n" .
             implode("\n", $clauses) .
-            "\n);\nout center tags;\n";
+            "\n);\nout center tags " . ($light ? 500 : 900) . ";\n";
     };
 
 
@@ -288,9 +351,9 @@ function getNearbyPlaces(
 
                 CURLOPT_RETURNTRANSFER => true,
 
-                CURLOPT_TIMEOUT => 18,
+                CURLOPT_TIMEOUT => 12,
 
-                CURLOPT_CONNECTTIMEOUT => 6,
+                CURLOPT_CONNECTTIMEOUT => 3,
 
                 CURLOPT_FOLLOWLOCATION => true,
 
@@ -334,7 +397,7 @@ function getNearbyPlaces(
         /* Hard cap: never wait more than ~20s in total,
            no matter how many mirrors are unresponsive. */
 
-        $deadline = microtime(true) + 20;
+        $deadline = microtime(true) + 12;
 
         while (
             $running > 0 &&
@@ -535,6 +598,40 @@ function getNearbyPlaces(
 
     if (!$combinedResponse["success"]) {
 
+        @unlink($cacheFile . ".lock");
+
+        /* -----------------------------------------------
+           STALE-CACHE FALLBACK
+           -----------------------------------------------
+
+           If an older cached copy of this area exists - even
+           an expired one - use it instead of failing. Slightly
+           out-of-date map data is far better for the user than
+           an error page after a long wait, and it keeps the
+           page fast when the public mirrors are down.
+           ----------------------------------------------- */
+
+        if (is_file($cacheFile)) {
+
+            $stale = json_decode(
+                @file_get_contents($cacheFile),
+                true
+            );
+
+            if (
+                is_array($stale) &&
+                !empty($stale["elements"])
+            ) {
+
+                $elements = $stale["elements"];
+
+                $placesResponse = ["success" => true];
+                $accommodationResponse = ["success" => true];
+
+                goto placesCacheHit;
+            }
+        }
+
         return [
 
             "success" => false,
@@ -591,37 +688,91 @@ function getNearbyPlaces(
 
         $stickyServer = $combinedResponse["server"];
 
-        $fetchSingleServer = function ($query, $server) {
+        /* -----------------------------------------------
+           All extra sample points are fetched AT THE SAME
+           TIME with curl_multi. The old version fetched them
+           one after another (4 x up to 15s = up to a full
+           extra minute of waiting on broad destinations like
+           "Kerala, India"). Now the whole sampling step costs
+           roughly one request instead of four.
+           ----------------------------------------------- */
 
-            $ch = curl_init();
+        $fetchManyPoints = function (array $queries, $server) {
 
-            curl_setopt_array($ch, [
-                CURLOPT_URL => $server,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => http_build_query(["data" => $query]),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 15,
-                CURLOPT_CONNECTTIMEOUT => 6,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTPHEADER => [
-                    "Content-Type: application/x-www-form-urlencoded",
-                    "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
-                    "Accept: application/json"
-                ]
-            ]);
+            $multi = curl_multi_init();
+            $handles = [];
 
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            foreach ($queries as $query) {
 
-            if ($result !== false && $httpCode >= 200 && $httpCode < 300) {
-                $decoded = json_decode($result, true);
-                if (is_array($decoded) && isset($decoded["elements"])) {
-                    return $decoded["elements"];
-                }
+                $ch = curl_init();
+
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => $server,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => http_build_query(["data" => $query]),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 12,
+                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTPHEADER => [
+                        "Content-Type: application/x-www-form-urlencoded",
+                        "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                        "Accept: application/json"
+                    ]
+                ]);
+
+                curl_multi_add_handle($multi, $ch);
+
+                $handles[] = $ch;
             }
 
-            return [];
+            $running = null;
+
+            $deadline = microtime(true) + 13;
+
+            do {
+
+                curl_multi_exec($multi, $running);
+
+                if ($running > 0) {
+                    curl_multi_select($multi, 0.5);
+                }
+
+            } while ($running > 0 && microtime(true) < $deadline);
+
+            $collected = [];
+
+            foreach ($handles as $ch) {
+
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $body = curl_multi_getcontent($ch);
+
+                if (
+                    $body !== false &&
+                    $httpCode >= 200 &&
+                    $httpCode < 300
+                ) {
+
+                    $decoded = json_decode($body, true);
+
+                    if (
+                        is_array($decoded) &&
+                        !empty($decoded["elements"])
+                    ) {
+                        $collected = array_merge(
+                            $collected,
+                            $decoded["elements"]
+                        );
+                    }
+                }
+
+                curl_multi_remove_handle($multi, $ch);
+                curl_close($ch);
+            }
+
+            curl_multi_close($multi);
+
+            return $collected;
         };
 
 
@@ -640,23 +791,25 @@ function getNearbyPlaces(
 
         $pointRadius = max(20000, (int)($radius * 0.6));
 
+        $pointQueries = [];
+
         foreach ($extraPoints as $point) {
 
-            $pointQuery = $buildOverpassQuery(
+            $pointQueries[] = $buildOverpassQuery(
                 $pointRadius,
                 $point[0],
                 $point[1],
                 true
             );
+        }
 
-            $extraElements = $fetchSingleServer(
-                $pointQuery,
-                $stickyServer
-            );
+        $extraElements = $fetchManyPoints(
+            $pointQueries,
+            $stickyServer
+        );
 
-            if (!empty($extraElements)) {
-                $elements = array_merge($elements, $extraElements);
-            }
+        if (!empty($extraElements)) {
+            $elements = array_merge($elements, $extraElements);
         }
     }
 
@@ -667,6 +820,8 @@ function getNearbyPlaces(
         $cacheFile,
         json_encode(["elements" => $elements])
     );
+
+    @unlink($cacheFile . ".lock");
 
     placesCacheHit:
 

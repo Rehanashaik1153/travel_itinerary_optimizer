@@ -91,6 +91,22 @@ function wanderRecommendEstimatedCost($place)
 
 function wanderRecommendNormalizeText($text)
 {
+    /*
+       PERFORMANCE: this function is called tens of thousands of
+       times during recommendation (once per candidate, per already
+       selected place, per selection round). The result for a given
+       input never changes, so cache it. This alone removes a large
+       share of the CPU time spent generating an itinerary.
+    */
+
+    static $normalizeCache = [];
+
+    $cacheKey = (string)$text;
+
+    if (isset($normalizeCache[$cacheKey])) {
+        return $normalizeCache[$cacheKey];
+    }
+
     $text = strtolower(trim((string)$text));
 
     $text = preg_replace(
@@ -105,7 +121,13 @@ function wanderRecommendNormalizeText($text)
         $text
     );
 
-    return trim($text);
+    $text = trim($text);
+
+    if (count($normalizeCache) < 20000) {
+        $normalizeCache[$cacheKey] = $text;
+    }
+
+    return $text;
 }
 
 
@@ -854,6 +876,14 @@ function wanderRecommendCoordinates($place)
 
 function wanderRecommendNameKey($name)
 {
+    static $keyCache = [];
+
+    $cacheKey = (string)$name;
+
+    if (isset($keyCache[$cacheKey])) {
+        return $keyCache[$cacheKey];
+    }
+
     $name = wanderRecommendNormalizeText($name);
 
     /*
@@ -899,10 +929,16 @@ function wanderRecommendNameKey($name)
         $filtered[] = $word;
     }
 
-    return implode(
+    $result = implode(
         ' ',
         $filtered
     );
+
+    if (count($keyCache) < 20000) {
+        $keyCache[$cacheKey] = $result;
+    }
+
+    return $result;
 }
 
 
@@ -990,14 +1026,33 @@ function wanderRecommendIsDuplicate(
 
         /*
          * Strong fuzzy-name duplicate check.
+         *
+         * PERFORMANCE: similar_text() is very expensive (worst case
+         * O(n^3) in string length) and it was previously run for every
+         * candidate against every already-selected place. Two names
+         * whose lengths differ a lot can never reach the 74-82%
+         * thresholds below, so skip the expensive call entirely in
+         * that case.
          */
+        $candidateLength = strlen($candidateName);
+        $selectedLength = strlen($selectedName);
+
+        $longestLength = max($candidateLength, $selectedLength);
+
         $similarity = 0;
 
-        similar_text(
-            $candidateName,
-            $selectedName,
-            $similarity
-        );
+        $lengthsComparable =
+            $longestLength > 0 &&
+            (min($candidateLength, $selectedLength) / $longestLength) >= 0.6;
+
+        if ($lengthsComparable) {
+
+            similar_text(
+                $candidateName,
+                $selectedName,
+                $similarity
+            );
+        }
 
         if ($similarity >= 82) {
             return true;

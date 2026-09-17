@@ -224,6 +224,7 @@ if ($selectedPlace === null) {
 
 
     </style>
+    <link rel="stylesheet" href="travel-theme.css">
 
 </head>
 

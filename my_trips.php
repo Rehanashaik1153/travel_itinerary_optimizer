@@ -97,7 +97,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
         rel="stylesheet"
         href="style.css"
     >
-
+    <link rel="stylesheet" href="travel-theme.css">
 </head>
 
 
@@ -165,6 +165,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
         </a>
 
     </div>
+    
 
 </header>
 

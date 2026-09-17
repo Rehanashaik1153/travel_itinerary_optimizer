@@ -200,6 +200,7 @@ if (!empty($trip["interests"])) {
     <title>Edit Trip | WanderAI</title>
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="travel-theme.css">
 
 </head>
 

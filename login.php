@@ -70,6 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <title>Login | WanderAI</title>
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="travel-theme.css">
 
 </head>
 
