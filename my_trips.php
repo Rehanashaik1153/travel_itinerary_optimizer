@@ -402,6 +402,15 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 
 
                         <a
+                            href="clone_trip.php?trip_id=<?php echo $trip["trip_id"]; ?>"
+                            class="clone-trip-btn"
+                            onclick="return confirm('Clone this trip as a new draft?');"
+                        >
+                            📋 Clone
+                        </a>
+
+
+                        <a
                             href="delete_trip.php?trip_id=<?php echo $trip["trip_id"]; ?>"
                             class="delete-trip-btn"
                             onclick="return confirm('Are you sure you want to delete this trip?');"

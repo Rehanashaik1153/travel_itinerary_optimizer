@@ -673,6 +673,71 @@ if ($userBudget > 0) {
 
 
 /* =====================================================
+   PER-DAY COST BREAKDOWN
+   Walks the actual saved itinerary (not the category
+   estimate above) and totals each day's place costs
+   against an even daily share of the trip budget, so a
+   day that runs heavy shows a clear warning.
+   ===================================================== */
+
+$dailyBudgetShare =
+    ($userBudget > 0 && $numberOfDays > 0)
+        ? $userBudget / $numberOfDays
+        : 0;
+
+$dailyCostBreakdown = [];
+
+if (!empty($generatedItinerary)) {
+
+    foreach ($generatedItinerary as $dayData) {
+
+        if (
+            !is_array($dayData) ||
+            empty($dayData["places"]) ||
+            !is_array($dayData["places"])
+        ) {
+            continue;
+        }
+
+        $dayNumber = (int)($dayData["day"] ?? 0);
+        $dayTotal = 0;
+
+        foreach ($dayData["places"] as $dayPlace) {
+
+            if (!is_array($dayPlace)) {
+                continue;
+            }
+
+            $dayTotal +=
+                estimatePlaceCost($dayPlace) *
+                max(1, $travelers);
+        }
+
+        $isOverDailyShare =
+            $dailyBudgetShare > 0 &&
+            $dayTotal > $dailyBudgetShare;
+
+        $dailyCostBreakdown[] = [
+            "day" => $dayNumber,
+            "total" => $dayTotal,
+            "over_share" => $isOverDailyShare,
+            "over_by" => $isOverDailyShare
+                ? ($dayTotal - $dailyBudgetShare)
+                : 0,
+        ];
+    }
+}
+
+$daysOverBudget =
+    array_filter(
+        $dailyCostBreakdown,
+        function ($d) {
+            return $d["over_share"];
+        }
+    );
+
+
+/* =====================================================
    ALTERNATIVE OPTIMIZATION ENGINE
    ===================================================== */
 
@@ -1815,6 +1880,28 @@ if (
     color: #777;
 }
 
+.budget-daily-intro {
+    color: #64748b;
+    font-size: 14px;
+    margin: -6px 0 16px 0;
+}
+
+.budget-day-row.budget-day-over {
+    background: #fef2f2;
+    border-radius: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.budget-day-row.budget-day-over strong {
+    color: #b91c1c;
+}
+
+.budget-day-row.budget-day-over small {
+    color: #b91c1c;
+    font-weight: 600;
+}
+
 .budget-total {
     font-size: 22px;
     font-weight: 800;
@@ -2659,6 +2746,79 @@ echo strtoupper(
 </div>
 
 </section>
+
+
+<!-- =================================================
+     PER-DAY ACTUAL COST BREAKDOWN
+     ================================================= -->
+
+<?php if (!empty($dailyCostBreakdown)): ?>
+
+<section class="budget-breakdown budget-daily-breakdown">
+
+<p class="dashboard-small-title">
+    DAY-BY-DAY REALITY CHECK
+</p>
+
+<h2>
+    What your actual itinerary costs, per day
+</h2>
+
+<p class="budget-daily-intro">
+    Based on the real places in your saved itinerary
+    <?php if ($dailyBudgetShare > 0): ?>
+        , compared against an even daily share of
+        <strong><?php echo formatRupees($dailyBudgetShare); ?></strong>
+        from your total budget.
+    <?php else: ?>
+        . Add a trip budget above to see day-by-day warnings.
+    <?php endif; ?>
+</p>
+
+<?php if (!empty($daysOverBudget)): ?>
+
+    <div class="budget-alert budget-alert-error">
+        ⚠️
+        <?php echo count($daysOverBudget); ?>
+        day<?php echo count($daysOverBudget) === 1 ? "" : "s"; ?>
+        <?php echo count($daysOverBudget) === 1 ? "runs" : "run"; ?>
+        over your daily budget share.
+    </div>
+
+<?php elseif ($dailyBudgetShare > 0): ?>
+
+    <div class="budget-alert budget-alert-success">
+        ✅ Every day fits within its share of the budget.
+    </div>
+
+<?php endif; ?>
+
+<?php foreach ($dailyCostBreakdown as $dayCost): ?>
+
+    <div class="budget-row budget-day-row <?php echo $dayCost['over_share'] ? 'budget-day-over' : ''; ?>">
+
+        <div class="budget-row-label">
+            <span><?php echo $dayCost['over_share'] ? '⚠️' : '📅'; ?></span>
+            <div>
+                <strong>Day <?php echo (int)$dayCost['day']; ?></strong>
+                <?php if ($dayCost['over_share']): ?>
+                    <small>
+                        <?php echo formatRupees($dayCost['over_by']); ?>
+                        over the daily share
+                    </small>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <strong><?php echo formatRupees($dayCost['total']); ?></strong>
+
+    </div>
+
+<?php endforeach; ?>
+
+</section>
+
+<?php endif; ?>
 
 
 <!-- =================================================

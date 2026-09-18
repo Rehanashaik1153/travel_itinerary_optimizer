@@ -15,6 +15,7 @@ require_once "db.php";
 require_once "places.php";
 require_once "recommend_places.php";
 require_once "generate_itinerary.php";
+require_once "itinerary_helpers.php";
 
 
 $username = htmlspecialchars(
@@ -104,6 +105,17 @@ $destination =
 
 $startDateRaw =
     $trip["start_date"] ?? "";
+
+$start_date_iso = "";
+
+if (!empty($startDateRaw)) {
+
+    $isoTimestamp = strtotime($startDateRaw);
+
+    if ($isoTimestamp !== false) {
+        $start_date_iso = date("Y-m-d", $isoTimestamp);
+    }
+}
 
 $start_date = "";
 
@@ -1817,6 +1829,30 @@ $page_title =
             ✈️ Plan Another Trip
         </a>
 
+
+        <a
+            href="itinerary_print.php?trip_id=<?php echo $trip_id; ?>"
+            class="itinerary-action-btn print-trip-action"
+            target="_blank"
+        >
+            🖨️ Print / Save PDF
+        </a>
+
+        <a
+            href="export_ics.php?trip_id=<?php echo $trip_id; ?>"
+            class="itinerary-action-btn calendar-trip-action"
+        >
+            📅 Add to Calendar
+        </a>
+
+        <a
+            href="clone_trip.php?trip_id=<?php echo $trip_id; ?>"
+            class="itinerary-action-btn clone-trip-action"
+            onclick="return confirm('Clone this trip as a new draft you can reuse?');"
+        >
+            📋 Clone Trip
+        </a>
+
     </div>
 
 </section>
@@ -2607,6 +2643,43 @@ if (!empty($generatedItinerary)) {
     <?php else: ?>
 
 
+        <?php
+        /* =============================================
+           WEATHER - fetched once per page load, keyed
+           by day number so each day-card can show a
+           badge. Silently skipped if it fails.
+           ============================================= */
+
+        $wanderWeatherByDay = [];
+
+        $wanderDailyWeather = wanderGetDailyWeather(
+            $trip["latitude"] ?? null,
+            $trip["longitude"] ?? null,
+            $start_date_iso,
+            $number_of_days
+        );
+
+        if (is_array($wanderDailyWeather)) {
+            foreach ($wanderDailyWeather as $wIndex => $wDay) {
+                $wanderWeatherByDay[$wIndex + 1] = $wDay;
+            }
+        }
+        ?>
+
+        <?php if (empty($wanderWeatherByDay)): ?>
+            <!--
+                WEATHER DEBUG: no weather data was returned.
+                Common causes: the server has no internet
+                access to api.open-meteo.com, the PHP curl
+                extension is disabled and allow_url_fopen is
+                off in php.ini, or this trip has no
+                latitude/longitude saved (lat=<?php echo htmlspecialchars((string)($trip['latitude'] ?? 'null')); ?>,
+                lng=<?php echo htmlspecialchars((string)($trip['longitude'] ?? 'null')); ?>,
+                start_date_iso=<?php echo htmlspecialchars($start_date_iso); ?>).
+            -->
+        <?php endif; ?>
+
+
         <?php foreach (
             $generatedItinerary
             as $dayData
@@ -2636,7 +2709,12 @@ if (!empty($generatedItinerary)) {
 
             ?>
 
-            <div class="day-card">
+            <?php
+            $wanderCurrentDayNumber = (int)($dayData["day"] ?? 0);
+            $wanderCurrentDayWeather = $wanderWeatherByDay[$wanderCurrentDayNumber] ?? null;
+            ?>
+
+            <div class="day-card" data-day="<?php echo $wanderCurrentDayNumber; ?>">
 
 
                 <div class="day-title">
@@ -2676,6 +2754,24 @@ if (!empty($generatedItinerary)) {
                         </p>
 
                     </div>
+
+
+                    <?php if ($wanderCurrentDayWeather): ?>
+
+                        <div
+                            class="day-weather-badge<?php echo $wanderCurrentDayWeather['is_rainy'] ? ' day-weather-rainy' : ''; ?>"
+                            title="<?php echo htmlspecialchars($wanderCurrentDayWeather['label']); ?>"
+                        >
+                            <span class="day-weather-icon"><?php echo $wanderCurrentDayWeather['icon']; ?></span>
+                            <span class="day-weather-temps">
+                                <?php echo round($wanderCurrentDayWeather['max_c']); ?>°/<?php echo round($wanderCurrentDayWeather['min_c']); ?>°C
+                            </span>
+                            <?php if ($wanderCurrentDayWeather['is_rainy']): ?>
+                                <span class="day-weather-rain-note">☔ Rain likely - indoor spots favored</span>
+                            <?php endif; ?>
+                        </div>
+
+                    <?php endif; ?>
 
                 </div>
 
@@ -2718,13 +2814,16 @@ if (!empty($generatedItinerary)) {
                 <?php else: ?>
 
 
-                    <div class="timeline">
+                    <div
+                        class="timeline"
+                        data-day="<?php echo $wanderCurrentDayNumber; ?>"
+                    >
 
 
                         <?php foreach (
                             $dayData[
                                 "places"
-                            ] as $schedulePlace
+                            ] as $wanderPlaceIndex => $schedulePlace
                         ): ?>
 
 
@@ -2778,6 +2877,8 @@ if (!empty($generatedItinerary)) {
 
                             <div
                                 class="timeline-item <?php echo $isBreak ? 'timeline-break' : ''; ?>"
+                                draggable="true"
+                                data-index="<?php echo (int)$wanderPlaceIndex; ?>"
                             >
 
 
@@ -2786,6 +2887,11 @@ if (!empty($generatedItinerary)) {
 
 
                                 <div class="timeline-time">
+
+                                    <span
+                                        class="timeline-drag-handle"
+                                        title="Drag to reorder"
+                                    >⠿</span>
 
                                     🕐
 
@@ -3046,6 +3152,108 @@ if (!empty($generatedItinerary)) {
     </div>
 
 </footer>
+
+
+<script>
+(function () {
+
+    var TRIP_ID = <?php echo (int)$trip_id; ?>;
+    var draggedItem = null;
+
+    document.querySelectorAll(".timeline").forEach(function (timeline) {
+
+        timeline.addEventListener("dragstart", function (e) {
+            var item = e.target.closest(".timeline-item");
+            if (!item) return;
+            draggedItem = item;
+            item.classList.add("wander-dragging");
+            e.dataTransfer.effectAllowed = "move";
+        });
+
+        timeline.addEventListener("dragend", function (e) {
+            var item = e.target.closest(".timeline-item");
+            if (item) item.classList.remove("wander-dragging");
+            timeline.querySelectorAll(".wander-drag-over").forEach(function (el) {
+                el.classList.remove("wander-drag-over");
+            });
+        });
+
+        timeline.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            var target = e.target.closest(".timeline-item");
+            if (!target || target === draggedItem) return;
+
+            timeline.querySelectorAll(".wander-drag-over").forEach(function (el) {
+                el.classList.remove("wander-drag-over");
+            });
+            target.classList.add("wander-drag-over");
+        });
+
+        timeline.addEventListener("drop", function (e) {
+            e.preventDefault();
+            var target = e.target.closest(".timeline-item");
+
+            timeline.querySelectorAll(".wander-drag-over").forEach(function (el) {
+                el.classList.remove("wander-drag-over");
+            });
+
+            if (!target || !draggedItem || target === draggedItem) return;
+
+            var items = Array.from(timeline.querySelectorAll(".timeline-item"));
+            var draggedPos = items.indexOf(draggedItem);
+            var targetPos = items.indexOf(target);
+
+            if (draggedPos < targetPos) {
+                target.after(draggedItem);
+            } else {
+                target.before(draggedItem);
+            }
+
+            wanderSaveDayOrder(timeline);
+        });
+    });
+
+    function wanderSaveDayOrder(timeline) {
+
+        var day = parseInt(timeline.dataset.day, 10);
+
+        var order = Array.from(
+            timeline.querySelectorAll(".timeline-item")
+        ).map(function (el) {
+            return parseInt(el.dataset.index, 10);
+        });
+
+        var note = document.createElement("div");
+        note.className = "timeline-saving-note";
+        note.textContent = "⏳ Saving new order and recalculating travel times...";
+        timeline.after(note);
+
+        fetch("reorder_itinerary.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                trip_id: TRIP_ID,
+                day: day,
+                order: order
+            })
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                note.textContent = "⚠️ " + (data.error || "Could not save the new order.");
+                note.style.color = "#b91c1c";
+            }
+        })
+        .catch(function () {
+            note.textContent = "⚠️ Could not reach the server to save the new order.";
+            note.style.color = "#b91c1c";
+        });
+    }
+
+})();
+</script>
 
 
 </body>
