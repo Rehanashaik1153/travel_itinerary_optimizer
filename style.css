@@ -1648,7 +1648,7 @@ a.clone-trip-action.itinerary-action-btn {
     position: relative;
     z-index: 2;
     max-width: 720px;
-    color: white;
+    color:white;
 }
 
 .reference-hero-content h1 {
@@ -1656,10 +1656,11 @@ a.clone-trip-action.itinerary-action-btn {
     line-height: 1.12;
     margin-bottom: 22px;
     letter-spacing: -1.5px;
+    color:#67e8f9
 }
 
 .reference-hero-content h1 span {
-    color: #8cc7bf;
+    color: #67e8f9;
 }
 
 .reference-hero-content p {
