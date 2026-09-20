@@ -108,23 +108,49 @@ function wanderGetDailyWeather(
     $startDate,
     $numberOfDays
 ) {
+    $debug = [
+        "latitude" => $latitude,
+        "longitude" => $longitude,
+        "start_date" => $startDate,
+        "number_of_days" => $numberOfDays,
+    ];
+
     if (
         !is_numeric($latitude) ||
         !is_numeric($longitude) ||
         ((float)$latitude === 0.0 && (float)$longitude === 0.0) ||
         empty($startDate)
     ) {
+        $debug["fatal"] = "Invalid or missing coordinates/date before any API call.";
+        $GLOBALS["wanderWeatherDebug"] = $debug;
         return null;
     }
 
     $numberOfDays = max(1, min(16, (int)$numberOfDays));
 
-    try {
-        $endDate = date(
-            "Y-m-d",
-            strtotime($startDate . " +" . ($numberOfDays - 1) . " days")
-        );
-    } catch (Exception $e) {
+    $endDate = date(
+        "Y-m-d",
+        strtotime($startDate . " +" . ($numberOfDays - 1) . " days")
+    );
+
+    $debug["end_date"] = $endDate;
+
+    // Open-Meteo's free forecast endpoint only covers roughly
+    // "today" through ~16 days ahead. A trip dated outside that
+    // window will legitimately get no data back - this is not
+    // an app bug, it's the API's own limit.
+    $daysFromToday = (int)floor(
+        (strtotime($startDate) - strtotime(date("Y-m-d"))) / 86400
+    );
+    $debug["days_from_today"] = $daysFromToday;
+
+    if ($daysFromToday > 16 || $daysFromToday < -1) {
+        $debug["fatal"] =
+            "Trip start date is " . $daysFromToday .
+            " days from today - outside Open-Meteo's free forecast " .
+            "window (roughly today to +16 days). No weather data " .
+            "will be available for this trip until it's closer.";
+        $GLOBALS["wanderWeatherDebug"] = $debug;
         return null;
     }
 
@@ -139,6 +165,8 @@ function wanderGetDailyWeather(
         isset($_SESSION[$cacheKey]["fetched_at"]) &&
         (time() - $_SESSION[$cacheKey]["fetched_at"]) < 3600
     ) {
+        $debug["source"] = "session_cache";
+        $GLOBALS["wanderWeatherDebug"] = $debug;
         return $_SESSION[$cacheKey]["data"];
     }
 
@@ -151,6 +179,8 @@ function wanderGetDailyWeather(
         "&start_date=" . urlencode($startDate) .
         "&end_date=" . urlencode($endDate);
 
+    $debug["url"] = $url;
+
     $result = null;
 
     if (function_exists("curl_init")) {
@@ -159,36 +189,72 @@ function wanderGetDailyWeather(
 
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 5,
-            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
             CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER => [
+                "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                "Accept: application/json"
+            ],
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrno = curl_errno($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
+
+        $debug["method"] = "curl";
+        $debug["http_code"] = $httpCode;
+        $debug["curl_errno"] = $curlErrno;
+        $debug["curl_error"] = $curlError;
+        $debug["body_length"] = is_string($response) ? strlen($response) : 0;
 
         if ($response !== false && $httpCode === 200) {
             $result = json_decode($response, true);
+            if (!is_array($result)) {
+                $debug["json_error"] = json_last_error_msg();
+            }
+        } else {
+            $debug["body_snippet"] = is_string($response)
+                ? substr($response, 0, 300)
+                : "";
         }
 
     } elseif (ini_get("allow_url_fopen")) {
 
+        $debug["method"] = "file_get_contents";
+
         $context = stream_context_create([
-            "http" => ["timeout" => 5]
+            "http" => ["timeout" => 8]
         ]);
 
         $response = @file_get_contents($url, false, $context);
 
+        $debug["body_length"] = is_string($response) ? strlen($response) : 0;
+
         if ($response !== false) {
             $result = json_decode($response, true);
+            if (!is_array($result)) {
+                $debug["json_error"] = json_last_error_msg();
+            }
+        } else {
+            $lastError = error_get_last();
+            $debug["fopen_error"] = $lastError["message"] ?? "unknown";
         }
+
+    } else {
+        $debug["fatal"] = "Neither curl nor allow_url_fopen is available on this server.";
     }
 
     if (
         !is_array($result) ||
         empty($result["daily"]["time"])
     ) {
+        if (is_array($result) && isset($result["reason"])) {
+            $debug["api_error_reason"] = $result["reason"];
+        }
+        $GLOBALS["wanderWeatherDebug"] = $debug;
         return null;
     }
 
@@ -215,6 +281,10 @@ function wanderGetDailyWeather(
         "fetched_at" => time(),
         "data" => $days,
     ];
+
+    $debug["source"] = "live_api";
+    $debug["parsed_day_count"] = count($days);
+    $GLOBALS["wanderWeatherDebug"] = $debug;
 
     return $days;
 }

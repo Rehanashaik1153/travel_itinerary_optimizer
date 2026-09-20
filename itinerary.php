@@ -216,6 +216,7 @@ $itineraryPlaces = [];
 $generatedItinerary = [];
 
 $selectedAccommodation = null;
+$wanderWideAccommodationDebug = null;
 
 $placesMessage = "";
 
@@ -1041,6 +1042,40 @@ if ($needsGeneration) {
 
 
             /* ---------------------------------------------
+               ZERO PLACES FOUND (not an API failure - the
+               request succeeded, but nothing matched near
+               these exact coordinates). Previously this case
+               set no message at all, so every card on the
+               page just looked silently empty with nothing
+               explaining why.
+               --------------------------------------------- */
+
+            if (empty($allPlaces)) {
+
+                $placesMessage =
+                    "No places were found near these exact coordinates " .
+                    "(" . round((float)$latitude, 4) . ", " . round((float)$longitude, 4) . "). " .
+                    "This can happen if the destination is very remote, " .
+                    "or if the geocoded location is slightly off " .
+                    "(for example landing in an unpopulated area). " .
+                    "Try editing the trip and entering a nearby town or " .
+                    "landmark name instead, or a more specific address.";
+
+                if (!empty($savedItinerary)) {
+
+                    $generatedItinerary = $savedItinerary;
+                    $selectedAccommodation = $savedAccommodation;
+                    $itineraryPlaces = $savedPlaces;
+                    $placesDiscoveredCount = $savedPlacesCount;
+
+                    $placesMessage =
+                        "No new places were found near this destination. " .
+                        "Your previously saved itinerary is being displayed.";
+                }
+            }
+
+
+            /* ---------------------------------------------
                RECOMMEND PLACES
                --------------------------------------------- */
 
@@ -1161,6 +1196,57 @@ if ($needsGeneration) {
 
                 $selectedAccommodation =
                     $savedAccommodation;
+            }
+
+
+            /* ---------------------------------------------
+               FALLBACK: WIDENED ACCOMMODATION-ONLY SEARCH
+
+               The main query's radius sometimes has zero
+               OSM-tagged lodging (real gap in the map data,
+               not an app bug) - so before giving up, try a
+               dedicated, much wider lodging-only search.
+               --------------------------------------------- */
+
+            if ($selectedAccommodation === null) {
+
+                $wanderWideResult =
+                    getNearbyAccommodation(
+                        $latitude,
+                        $longitude,
+                        60000
+                    );
+
+                $wanderWideAccommodation =
+                    $wanderWideResult["places"] ?? [];
+
+                $wanderWideAccommodationDebug =
+                    $wanderWideResult["debug"] ?? null;
+
+                if (!empty($wanderWideAccommodation)) {
+
+                    usort(
+                        $wanderWideAccommodation,
+                        function ($a, $b) use ($latitude, $longitude) {
+                            $da = calculateDistance(
+                                $latitude,
+                                $longitude,
+                                (float)($a["latitude"] ?? 0),
+                                (float)($a["longitude"] ?? 0)
+                            );
+                            $db = calculateDistance(
+                                $latitude,
+                                $longitude,
+                                (float)($b["latitude"] ?? 0),
+                                (float)($b["longitude"] ?? 0)
+                            );
+                            return $da <=> $db;
+                        }
+                    );
+
+                    $selectedAccommodation =
+                        $wanderWideAccommodation[0];
+                }
             }
 
 
@@ -2174,13 +2260,56 @@ $page_title =
                 </h2>
 
                 <p>
-                    No suitable accommodation was found
-                    in the current place results.
+                    No suitable accommodation was found near
+                    this destination, even after widening the
+                    search - this specific area may simply have
+                    no hotels/guesthouses tagged on OpenStreetMap
+                    yet. You can still add your own accommodation
+                    notes manually, or pick a slightly different
+                    starting point when editing the trip.
                 </p>
 
             </div>
 
         </div>
+
+        <!--
+            ACCOMMODATION DEBUG: no accommodation found for
+            lat=<?php echo htmlspecialchars((string)($latitude ?? 'null')); ?>,
+            lng=<?php echo htmlspecialchars((string)($longitude ?? 'null')); ?>.
+            Tried: (1) places already discovered near the
+            destination, (2) previously saved accommodation,
+            (3) a dedicated widened lodging-only search.
+
+            WIDENED SEARCH DETAIL:
+<?php if ($wanderWideAccommodationDebug === null): ?>
+            The widened search never ran (accommodation was
+            already resolved another way, or this trip used
+            the saved-itinerary/invalid-coordinates path).
+<?php else: ?>
+            radius_meters=<?php echo htmlspecialchars((string)($wanderWideAccommodationDebug['radius'] ?? '?')); ?>
+            parsed_place_count=<?php echo htmlspecialchars((string)($wanderWideAccommodationDebug['parsed_place_count'] ?? 0)); ?>
+<?php if (!empty($wanderWideAccommodationDebug['fatal'])): ?>
+            fatal=<?php echo htmlspecialchars($wanderWideAccommodationDebug['fatal']); ?>
+<?php endif; ?>
+<?php foreach (($wanderWideAccommodationDebug['attempts'] ?? []) as $wAttempt): ?>
+            - server=<?php echo htmlspecialchars($wAttempt['server'] ?? '?'); ?>
+              http_code=<?php echo htmlspecialchars((string)($wAttempt['http_code'] ?? '?')); ?>
+              curl_errno=<?php echo htmlspecialchars((string)($wAttempt['curl_errno'] ?? '?')); ?>
+              curl_error=<?php echo htmlspecialchars((string)($wAttempt['curl_error'] ?? '')); ?>
+              body_length=<?php echo htmlspecialchars((string)($wAttempt['body_length'] ?? 0)); ?>
+<?php if (isset($wAttempt['element_count'])): ?>
+              element_count=<?php echo htmlspecialchars((string)$wAttempt['element_count']); ?>
+<?php endif; ?>
+<?php if (!empty($wAttempt['json_error'])): ?>
+              json_error=<?php echo htmlspecialchars($wAttempt['json_error']); ?>
+<?php endif; ?>
+<?php if (!empty($wAttempt['body_snippet'])): ?>
+              body_snippet=<?php echo htmlspecialchars($wAttempt['body_snippet']); ?>
+<?php endif; ?>
+<?php endforeach; ?>
+<?php endif; ?>
+        -->
 
     <?php endif; ?>
 
@@ -2669,13 +2798,41 @@ if (!empty($generatedItinerary)) {
         <?php if (empty($wanderWeatherByDay)): ?>
             <!--
                 WEATHER DEBUG: no weather data was returned.
-                Common causes: the server has no internet
-                access to api.open-meteo.com, the PHP curl
-                extension is disabled and allow_url_fopen is
-                off in php.ini, or this trip has no
-                latitude/longitude saved (lat=<?php echo htmlspecialchars((string)($trip['latitude'] ?? 'null')); ?>,
-                lng=<?php echo htmlspecialchars((string)($trip['longitude'] ?? 'null')); ?>,
-                start_date_iso=<?php echo htmlspecialchars($start_date_iso); ?>).
+<?php
+$wanderWDebug = $GLOBALS["wanderWeatherDebug"] ?? null;
+if ($wanderWDebug === null):
+?>
+                wanderGetDailyWeather() did not run or set no
+                debug info at all (unexpected).
+<?php else: ?>
+                latitude=<?php echo htmlspecialchars((string)($wanderWDebug['latitude'] ?? '')); ?>
+                longitude=<?php echo htmlspecialchars((string)($wanderWDebug['longitude'] ?? '')); ?>
+                start_date=<?php echo htmlspecialchars((string)($wanderWDebug['start_date'] ?? '')); ?>
+                end_date=<?php echo htmlspecialchars((string)($wanderWDebug['end_date'] ?? '')); ?>
+                days_from_today=<?php echo htmlspecialchars((string)($wanderWDebug['days_from_today'] ?? '')); ?>
+<?php if (!empty($wanderWDebug['fatal'])): ?>
+                fatal=<?php echo htmlspecialchars($wanderWDebug['fatal']); ?>
+<?php endif; ?>
+<?php if (isset($wanderWDebug['method'])): ?>
+                method=<?php echo htmlspecialchars($wanderWDebug['method']); ?>
+                http_code=<?php echo htmlspecialchars((string)($wanderWDebug['http_code'] ?? '')); ?>
+                curl_errno=<?php echo htmlspecialchars((string)($wanderWDebug['curl_errno'] ?? '')); ?>
+                curl_error=<?php echo htmlspecialchars((string)($wanderWDebug['curl_error'] ?? '')); ?>
+                body_length=<?php echo htmlspecialchars((string)($wanderWDebug['body_length'] ?? '')); ?>
+<?php endif; ?>
+<?php if (!empty($wanderWDebug['json_error'])): ?>
+                json_error=<?php echo htmlspecialchars($wanderWDebug['json_error']); ?>
+<?php endif; ?>
+<?php if (!empty($wanderWDebug['api_error_reason'])): ?>
+                api_error_reason=<?php echo htmlspecialchars($wanderWDebug['api_error_reason']); ?>
+<?php endif; ?>
+<?php if (!empty($wanderWDebug['body_snippet'])): ?>
+                body_snippet=<?php echo htmlspecialchars($wanderWDebug['body_snippet']); ?>
+<?php endif; ?>
+<?php if (!empty($wanderWDebug['url'])): ?>
+                url=<?php echo htmlspecialchars($wanderWDebug['url']); ?>
+<?php endif; ?>
+<?php endif; ?>
             -->
         <?php endif; ?>
 

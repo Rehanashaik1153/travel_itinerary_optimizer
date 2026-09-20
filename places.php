@@ -93,7 +93,9 @@ function getNearbyPlaces(
 
         "https://overpass.kumi.systems/api/interpreter",
 
-        "https://overpass.nchc.org.tw/api/interpreter"
+        "https://overpass.nchc.org.tw/api/interpreter",
+
+        "https://overpass.openstreetmap.ru/api/interpreter"
 
     ];
 
@@ -1582,6 +1584,164 @@ function getNearbyPlaces(
 
     ];
 
+}
+
+
+/* =====================================================
+   WIDENED ACCOMMODATION-ONLY FALLBACK
+
+   The main combined query above already asks Overpass for
+   hotels/hostels/guest houses etc. within the trip's normal
+   search radius, and most of the time that's enough. But
+   some destinations genuinely have zero OSM-tagged lodging
+   within that radius (real, sparsely-mapped areas) - so the
+   itinerary page's "no accommodation found" case had no way
+   to try any harder.
+
+   This is a small, separate, best-effort query used ONLY as
+   a fallback: same servers, but a much larger radius and
+   only the lodging tags (nothing else), so it stays fast
+   even though it isn't cached like the main query.
+   ===================================================== */
+
+function getNearbyAccommodation(
+    $latitude,
+    $longitude,
+    $radius = 60000
+) {
+
+    $latitude = (float)$latitude;
+    $longitude = (float)$longitude;
+    $radius = max(10000, min(150000, (int)$radius));
+
+    $debug = [
+        "radius" => $radius,
+        "attempts" => [],
+    ];
+
+    if ($latitude == 0 || $longitude == 0) {
+        $debug["fatal"] = "Invalid coordinates (0,0).";
+        return ["places" => [], "debug" => $debug];
+    }
+
+    $servers = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.nchc.org.tw/api/interpreter",
+        "https://overpass.openstreetmap.ru/api/interpreter",
+    ];
+
+    $types = ["hotel", "resort", "guest_house", "hostel", "motel"];
+
+    $query =
+        '[out:json][timeout:20];(' .
+        'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')' .
+        '[tourism~"' . implode("|", $types) . '"];' .
+        ');out center tags 20;';
+
+    $response = null;
+
+    foreach ($servers as $server) {
+
+        $ch = curl_init($server);
+
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $server,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query([
+                "data" => $query
+            ]),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER => [
+                "Content-Type: application/x-www-form-urlencoded",
+                "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                "Accept: application/json"
+            ],
+        ]);
+
+        $body = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrorNumber = curl_errno($ch);
+        $curlErrorText = curl_error($ch);
+        curl_close($ch);
+
+        $attempt = [
+            "server" => $server,
+            "http_code" => $httpCode,
+            "curl_errno" => $curlErrorNumber,
+            "curl_error" => $curlErrorText,
+            "body_length" => is_string($body) ? strlen($body) : 0,
+        ];
+
+        if ($body !== false && $httpCode === 200) {
+
+            $decoded = json_decode($body, true);
+
+            if (is_array($decoded) && isset($decoded["elements"])) {
+
+                $attempt["element_count"] = count($decoded["elements"]);
+                $debug["attempts"][] = $attempt;
+
+                $response = $decoded;
+                break;
+
+            } else {
+
+                $attempt["json_error"] = json_last_error_msg();
+                $attempt["body_snippet"] = is_string($body)
+                    ? substr($body, 0, 200)
+                    : "";
+            }
+        } else {
+
+            $attempt["body_snippet"] = is_string($body)
+                ? substr($body, 0, 200)
+                : "";
+        }
+
+        $debug["attempts"][] = $attempt;
+    }
+
+    if (!is_array($response) || empty($response["elements"])) {
+        return ["places" => [], "debug" => $debug];
+    }
+
+    $results = [];
+
+    foreach ($response["elements"] as $element) {
+
+        $tags = $element["tags"] ?? [];
+        $name = trim($tags["name"] ?? "");
+
+        if ($name === "") {
+            continue;
+        }
+
+        $lat = $element["lat"] ?? ($element["center"]["lat"] ?? null);
+        $lon = $element["lon"] ?? ($element["center"]["lon"] ?? null);
+
+        if ($lat === null || $lon === null) {
+            continue;
+        }
+
+        $results[] = [
+            "name" => $name,
+            "category" => "Accommodation",
+            "latitude" => (float)$lat,
+            "longitude" => (float)$lon,
+            "opening_hours" => "",
+            "description" => "",
+        ];
+    }
+
+    $debug["parsed_place_count"] = count($results);
+
+    return ["places" => $results, "debug" => $debug];
 }
 
 ?>

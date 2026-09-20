@@ -368,7 +368,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <input
                 type="text"
                 name="destination"
-                placeholder="Example: Coonoor, London, Tokyo, Guntur..."
+                placeholder="Example: London, Tokyo, Japan..."
                 required
             >
 
