@@ -91,7 +91,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>My Trips | WanderAI</title>
+    <title>My Trips | TripNest</title>
 
     <link
         rel="stylesheet"
@@ -113,7 +113,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
         </span>
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>
@@ -224,7 +224,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 
             <p>
                 Start planning your first journey and
-                WanderAI will create a personalized
+                TripNest will create a personalized
                 travel itinerary for you.
             </p>
 
@@ -439,17 +439,17 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 <footer class="dashboard-footer">
 
     <div class="footer-logo">
-        ✈ Wander<span>AI</span>
+        ✈ Trip<span>Nest</span>
     </div>
 
 
     <p>
-        Your intelligent travel planning companion.
+        
     </p>
 
 
     <div class="copyright">
-        © 2026 WanderAI — AI Travel Itinerary Optimizer
+        © 2026 TripNest — AI Travel Itinerary Optimizer
     </div>
 
 </footer>

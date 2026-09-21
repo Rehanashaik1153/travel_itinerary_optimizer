@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - EXPORT ITINERARY AS .ICS CALENDAR
+   TRIPNEST - EXPORT ITINERARY AS .ICS CALENDAR
    ===================================================== */
 
 session_start();
@@ -62,7 +62,7 @@ $icsContent = wanderBuildIcsCalendar(
 );
 
 $filename =
-    "wanderai-" .
+    "tripnest-" .
     preg_replace("/[^a-z0-9]+/i", "-", strtolower($destination)) .
     "-itinerary.ics";
 

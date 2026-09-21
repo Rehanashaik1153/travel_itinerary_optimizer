@@ -1,7 +1,7 @@
 <?php
 
 /* ============================================================
-   WANDERAI - SMART PLACE RECOMMENDATION ENGINE
+   TRIPNEST - SMART PLACE RECOMMENDATION ENGINE
    ------------------------------------------------------------
    Purpose:
    1. Remove accommodation/infrastructure from attractions.

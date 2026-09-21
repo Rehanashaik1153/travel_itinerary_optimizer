@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - DYNAMIC ITINERARY GENERATOR
+   TRIPNEST - DYNAMIC ITINERARY GENERATOR
    ===================================================== */
 
 

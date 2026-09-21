@@ -147,7 +147,7 @@ if (
     >
 
     <title>
-        Explore Places | WanderAI
+        Explore Places | TripNest
     </title>
 
     <link rel="stylesheet" href="style.css">
@@ -391,7 +391,7 @@ if (
         </span>
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>
@@ -492,7 +492,7 @@ if (
 
         <p>
 
-            WanderAI is discovering tourist attractions
+            TripNest is discovering tourist attractions
             near your selected destination.
 
         </p>
@@ -897,7 +897,7 @@ if (
 
     <div class="footer-logo">
 
-        ✈ Wander<span>AI</span>
+        ✈ Trip<span>Nest</span>
 
     </div>
 
@@ -911,7 +911,7 @@ if (
 
     <div class="copyright">
 
-        © 2026 WanderAI — AI Travel Itinerary Optimizer
+        © 2026 TripNest — AI Travel Itinerary Optimizer
 
     </div>
 

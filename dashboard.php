@@ -86,7 +86,7 @@ $stmt->close();
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Dashboard | WanderAI</title>
+    <title>Dashboard | TripNest</title>
 
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="travel-theme.css">
@@ -108,7 +108,7 @@ $stmt->close();
         <span class="wander-dashboard-logo-icon">✈</span>
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>
@@ -199,7 +199,7 @@ $stmt->close();
             <p>
 
                 Ready for your next adventure? Create a smart,
-                personalized itinerary and let WanderAI help you
+                personalized itinerary and let TripNest help you
                 plan every part of your journey.
 
             </p>
@@ -480,7 +480,7 @@ $stmt->close();
 
                 <p>
 
-                    Let WanderAI create a personalized
+                    Let TripNest create a personalized
                     day-wise travel itinerary.
 
                 </p>
@@ -720,7 +720,7 @@ $stmt->close();
 
         <span>✈</span>
 
-        Wander<span>AI</span>
+        Trip<span>Nest</span>
         
 
     </div>
@@ -729,7 +729,7 @@ $stmt->close();
             
 
     <div class="wander-dashboard-copyright">
-        © 2026 WanderAI — AI Travel Itinerary Optimizer
+        © 2026 TripNest — AI Travel Itinerary Optimizer
     </div>
 
 

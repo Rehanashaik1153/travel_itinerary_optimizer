@@ -26,7 +26,7 @@ function geocodeDestination($destination)
             "method" => "GET",
 
             "header" =>
-                "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0 (Educational Project)\r\n" .
+                "User-Agent: TripNest-Travel-Itinerary-Optimizer/1.0 (Educational Project)\r\n" .
                 "Accept: application/json\r\n",
 
             "timeout" => 30,

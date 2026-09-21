@@ -1,5 +1,5 @@
 /* =====================================================
-   WANDERAI - GLOBAL STYLES
+   TRIPNEST - GLOBAL STYLES
    ===================================================== */
 
 * {
@@ -1508,7 +1508,7 @@ a.clone-trip-action.itinerary-action-btn {
 
 }
 /* =====================================================
-   WANDERAI LANDING PAGE / INDEX PAGE
+   TRIPNEST LANDING PAGE / INDEX PAGE
    ===================================================== */
 
 .landing-body {
@@ -2340,7 +2340,7 @@ a.clone-trip-action.itinerary-action-btn {
 
 }
 /* =====================================================
-   WANDERAI CUSTOM DASHBOARD
+   TRIPNEST CUSTOM DASHBOARD
    Add this at the END of style.css
 ===================================================== */
 
@@ -3192,7 +3192,7 @@ a.clone-trip-action.itinerary-action-btn {
 }
 
 /* =====================================================
-   WANDERAI - REGISTER PAGE
+   TRIPNEST - REGISTER PAGE
    ===================================================== */
 
 body.wander-auth-page {

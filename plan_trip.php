@@ -399,7 +399,7 @@ $page_title =
     >
 
     <title>
-        <?php echo $page_title; ?> | WanderAI
+        <?php echo $page_title; ?> | TripNest
     </title>
 
     <link
@@ -426,7 +426,7 @@ $page_title =
         </span>
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>
@@ -519,7 +519,7 @@ $page_title =
             <?php
             echo $edit_trip_id > 0
                 ? "Update your travel preferences and regenerate your personalized itinerary."
-                : "Tell us about your travel preferences and WanderAI will create a personalized itinerary for you.";
+                : "Tell us about your travel preferences and TripNest will create a personalized itinerary for you.";
             ?>
 
         </p>
@@ -1007,8 +1007,8 @@ $page_title =
 
                     <?php
                     echo $edit_trip_id > 0
-                        ? "Your trip details will be updated and WanderAI will regenerate your itinerary."
-                        : "WanderAI will analyze your destination, preferences, budget and available travel time.";
+                        ? "Your trip details will be updated and TripNest will regenerate your itinerary."
+                        : "TripNest will analyze your destination, preferences, budget and available travel time.";
                     ?>
 
                 </p>
@@ -1026,13 +1026,13 @@ $page_title =
 <footer class="dashboard-footer">
 
     <div class="footer-logo">
-        ✈ Wander<span>AI</span>
+        ✈ Trip<span>Nest</span>
     </div>
 
     
 
     <div class="copyright">
-        © 2026 WanderAI — AI Travel Itinerary Optimizer
+        © 2026 TripNest — AI Travel Itinerary Optimizer
     </div>
 
 </footer>

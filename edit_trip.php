@@ -7,179 +7,70 @@ if (!isset($_SESSION["user_id"])) {
     exit();
 }
 
-require_once "db.php";
+require_once "geocode.php";
 
-$username = htmlspecialchars($_SESSION["username"]);
-$user_id = (int) $_SESSION["user_id"];
-
+$results = [];
 $message = "";
-$messageType = "";
+$searchPerformed = false;
 
 
 /* =====================================================
-   CHECK TRIP ID
+   CHECK IF THIS IS FOR EDITING A TRIP
    ===================================================== */
 
-if (!isset($_GET["trip_id"])) {
-    header("Location: my_trips.php");
-    exit();
-}
-
-$trip_id = (int) $_GET["trip_id"];
+$edit_trip_id = isset($_GET["trip_id"])
+    ? (int) $_GET["trip_id"]
+    : 0;
 
 
 /* =====================================================
-   GET TRIP DETAILS
-   ===================================================== */
-
-$stmt = $conn->prepare(
-    "SELECT * FROM trips
-     WHERE trip_id = ? AND user_id = ?"
-);
-
-$stmt->bind_param(
-    "ii",
-    $trip_id,
-    $user_id
-);
-
-$stmt->execute();
-
-$result = $stmt->get_result();
-
-if ($result->num_rows !== 1) {
-
-    $stmt->close();
-
-    header("Location: my_trips.php");
-    exit();
-}
-
-$trip = $result->fetch_assoc();
-
-$stmt->close();
-
-
-/* =====================================================
-   UPDATE TRIP
+   SEARCH DESTINATION
    ===================================================== */
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $start_date = $_POST["start_date"] ?? "";
+    $destination = trim($_POST["destination"] ?? "");
 
-    $days = (int)($_POST["days"] ?? 0);
+    /* Preserve trip ID during edit */
 
-    $budget = (float)($_POST["budget"] ?? 0);
-
-    $travelers = (int)($_POST["travelers"] ?? 0);
-
-    $interests = isset($_POST["interests"])
-        ? implode(", ", $_POST["interests"])
-        : "";
-
-    $transport = $_POST["transport"] ?? "";
+    $edit_trip_id = isset($_POST["trip_id"])
+        ? (int) $_POST["trip_id"]
+        : 0;
 
 
-    /* VALIDATION */
+    if ($destination === "") {
 
-    if (
-        empty($start_date) ||
-        $days < 1 ||
-        $budget <= 0 ||
-        $travelers < 1
-    ) {
-
-        $message =
-            "Please fill in all required trip details correctly.";
-
-        $messageType = "error";
+        $message = "Please enter a destination.";
 
     } else {
 
-        /* UPDATE DATABASE */
+        $result = geocodeDestination($destination);
 
-        $updateStmt = $conn->prepare(
-            "UPDATE trips
-             SET
-                start_date = ?,
-                number_of_days = ?,
-                budget = ?,
-                travelers = ?,
-                interests = ?,
-                transport_preference = ?
-             WHERE trip_id = ?
-             AND user_id = ?"
-        );
+        $searchPerformed = true;
 
 
-        if (!$updateStmt) {
+        if ($result["success"]) {
 
-            $message =
-                "Database error: " . $conn->error;
+            $results = $result["results"];
 
-            $messageType = "error";
+            /* Save search results temporarily */
+
+            $_SESSION["geocode_results"] = $results;
+
+
+            /* Save edit trip ID temporarily */
+
+            if ($edit_trip_id > 0) {
+
+                $_SESSION["destination_edit_trip_id"] =
+                    $edit_trip_id;
+            }
 
         } else {
 
-            $updateStmt->bind_param(
-                "sidissii",
-                $start_date,
-                $days,
-                $budget,
-                $travelers,
-                $interests,
-                $transport,
-                $trip_id,
-                $user_id
-            );
-
-
-            if ($updateStmt->execute()) {
-
-                $updateStmt->close();
-
-                /*
-                 Redirect back to itinerary.
-                 Later we will connect this with
-                 the saved itinerary regeneration system.
-                */
-
-                header(
-                    "Location: itinerary.php?trip_id="
-                    . $trip_id
-                    . "&updated=1"
-                );
-
-                exit();
-
-            } else {
-
-                $message =
-                    "Unable to update trip: "
-                    . $updateStmt->error;
-
-                $messageType = "error";
-
-                $updateStmt->close();
-            }
+            $message = $result["message"];
         }
     }
-}
-
-
-/* =====================================================
-   PREPARE SELECTED INTERESTS
-   ===================================================== */
-
-$selectedInterests = [];
-
-if (!empty($trip["interests"])) {
-
-    $selectedInterests = array_map(
-        "trim",
-        explode(",", $trip["interests"])
-    );
 }
 
 ?>
@@ -197,10 +88,148 @@ if (!empty($trip["interests"])) {
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Edit Trip | WanderAI</title>
+    <title>
+        Choose Destination | TripNest
+    </title>
 
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="travel-theme.css">
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+
+    <style>
+
+        .destination-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 30px;
+        }
+
+
+        .destination-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+
+        .destination-search {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+
+        .destination-search input {
+            width: 70%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+
+        .destination-search button {
+            padding: 14px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 8px;
+        }
+
+
+        .destination-result {
+            background: white;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            transition: 0.2s;
+        }
+
+
+        .destination-result:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .destination-result label {
+            display: block;
+            cursor: pointer;
+        }
+
+
+        .destination-result input[type="radio"] {
+            margin-right: 10px;
+        }
+
+
+        .coordinates {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+
+        .select-button {
+            margin-top: 25px;
+            text-align: center;
+        }
+
+
+        .select-button button {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            background: #6366f1;
+            color: white;
+            transition: 0.2s ease;
+        }
+
+        .select-button button:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
+
+
+        .error-message {
+            margin-top: 20px;
+            padding: 15px;
+            background: #ffecec;
+            color: #c00;
+            border-radius: 8px;
+        }
+
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+        }
+
+
+        @media (max-width: 600px) {
+
+            .destination-search input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+
+            .destination-search button {
+                width: 100%;
+                margin-left: 0;
+            }
+
+        }
+
+    </style>
 
 </head>
 
@@ -214,7 +243,6 @@ if (!empty($trip["interests"])) {
 
 <header class="dashboard-navbar">
 
-
     <a
         href="dashboard.php"
         class="logo"
@@ -224,8 +252,9 @@ if (!empty($trip["interests"])) {
             ✈
         </span>
 
+
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>
@@ -237,9 +266,14 @@ if (!empty($trip["interests"])) {
             Dashboard
         </a>
 
-        <a href="plan_trip.php">
+
+        <a
+            href="plan_trip.php"
+            class="active"
+        >
             Plan Trip
         </a>
+
 
         <a href="my_trips.php">
             My Trips
@@ -250,22 +284,12 @@ if (!empty($trip["interests"])) {
 
     <div class="user-menu">
 
-
-        <div class="user-avatar">
-
-            <?php
-            echo strtoupper(
-                substr($username, 0, 1)
-            );
-            ?>
-
-        </div>
-
-
         <span class="user-name">
 
             <?php
-            echo $username;
+            echo htmlspecialchars(
+                $_SESSION["username"]
+            );
             ?>
 
         </span>
@@ -280,7 +304,6 @@ if (!empty($trip["interests"])) {
 
     </div>
 
-
 </header>
 
 
@@ -289,41 +312,31 @@ if (!empty($trip["interests"])) {
      MAIN CONTENT
      ===================================================== -->
 
-<main class="plan-trip-main">
+<main class="destination-container">
 
 
-    <!-- PAGE HEADER -->
+    <!-- HEADER -->
 
-    <section class="plan-trip-header">
+    <section class="destination-header">
 
         <p class="dashboard-small-title">
 
-            UPDATE YOUR JOURNEY
+            GLOBAL DESTINATION SEARCH
 
         </p>
 
 
         <h1>
 
-            Edit Your
-            <span>Trip</span> ✏️
+            🌍 Choose Your Destination
 
         </h1>
 
 
         <p>
 
-            Update your travel preferences and
-            trip details for
-            <strong>
-
-                <?php
-                echo htmlspecialchars(
-                    $trip["destination"]
-                );
-                ?>
-
-            </strong>
+            Enter any country, state, city, town or village
+            anywhere in the world.
 
         </p>
 
@@ -331,13 +344,54 @@ if (!empty($trip["interests"])) {
 
 
 
-    <!-- MESSAGE -->
+    <!-- =================================================
+         SEARCH FORM
+         ================================================= -->
 
-    <?php if (!empty($message)): ?>
+    <section class="destination-search">
 
-        <div
-            class="message <?php echo $messageType; ?>"
-        >
+
+        <form method="POST">
+
+
+            <!-- Preserve edit trip ID -->
+
+            <input
+                type="hidden"
+                name="trip_id"
+                value="<?php
+                    echo $edit_trip_id;
+                ?>"
+            >
+
+
+            <input
+                type="text"
+                name="destination"
+                placeholder="Example: London, Tokyo, Japan..."
+                required
+            >
+
+
+            <button type="submit">
+
+                🔍 Search
+
+            </button>
+
+
+        </form>
+
+    </section>
+
+
+
+    <!-- ERROR MESSAGE -->
+
+    <?php if ($message !== ""): ?>
+
+
+        <div class="error-message">
 
             <?php
             echo htmlspecialchars($message);
@@ -345,569 +399,182 @@ if (!empty($trip["interests"])) {
 
         </div>
 
+
     <?php endif; ?>
 
 
 
     <!-- =================================================
-         EDIT FORM
+         SEARCH RESULTS
          ================================================= -->
 
-    <section class="trip-form-card">
+    <?php if (
+        $searchPerformed &&
+        count($results) > 0
+    ): ?>
 
 
-        <form method="POST">
+        <section>
 
 
-            <!-- DESTINATION -->
+            <h2
+                style="
+                    text-align:center;
+                    margin-top:35px;
+                "
+            >
 
-            <div class="form-section-title">
+                Select the Correct Location
 
-                <div class="form-section-icon">
-                    📍
-                </div>
+            </h2>
 
 
-                <div>
 
-                    <h2>
-                        Trip Details
-                    </h2>
+            <form
+                method="POST"
+                action="select_destination.php"
+            >
 
 
-                    <p>
-                        Update your travel information.
-                    </p>
+                <!-- Preserve edit trip ID -->
 
-                </div>
-
-            </div>
-
-
-
-            <div class="trip-form-grid">
-
-
-                <!-- DESTINATION -->
-
-                <div class="trip-form-group full-width">
-
-                    <label>
-                        📍 Destination
-                    </label>
-
-
-                    <input
-                        type="text"
-                        value="<?php
-                            echo htmlspecialchars(
-                                $trip["destination"]
-                            );
-                        ?>"
-                        readonly
-                    >
-
-
-                    <p class="input-help">
-
-                        Destination cannot be changed here.
-                        Create a new trip for another destination.
-
-                    </p>
-
-                </div>
-
-
-
-                <!-- START DATE -->
-
-                <div class="trip-form-group">
-
-                    <label for="start_date">
-
-                        📅 Start Date
-
-                    </label>
-
-
-                    <input
-                        type="date"
-                        id="start_date"
-                        name="start_date"
-                        value="<?php
-                            echo htmlspecialchars(
-                                $trip["start_date"]
-                            );
-                        ?>"
-                        required
-                    >
-
-                </div>
-
-
-
-                <!-- DAYS -->
-
-                <div class="trip-form-group">
-
-                    <label for="days">
-
-                        🗓️ Number of Days
-
-                    </label>
-
-
-                    <input
-                        type="number"
-                        id="days"
-                        name="days"
-                        min="1"
-                        max="30"
-                        value="<?php
-                            echo (int)(
-                                $trip["number_of_days"]
-                            );
-                        ?>"
-                        required
-                    >
-
-                </div>
-
-
-
-                <!-- BUDGET -->
-
-                <div class="trip-form-group">
-
-                    <label for="budget">
-
-                        💰 Total Budget (₹)
-
-                    </label>
-
-
-                    <input
-                        type="number"
-                        id="budget"
-                        name="budget"
-                        min="1000"
-                        step="0.01"
-                        value="<?php
-                            echo htmlspecialchars(
-                                $trip["budget"]
-                            );
-                        ?>"
-                        required
-                    >
-
-                </div>
-
-
-
-                <!-- TRAVELERS -->
-
-                <div class="trip-form-group">
-
-                    <label for="travelers">
-
-                        👥 Number of Travelers
-
-                    </label>
-
-
-                    <input
-                        type="number"
-                        id="travelers"
-                        name="travelers"
-                        min="1"
-                        max="20"
-                        value="<?php
-                            echo (int)(
-                                $trip["travelers"]
-                            );
-                        ?>"
-                        required
-                    >
-
-                </div>
-
-            </div>
-
-
-
-            <!-- =================================================
-                 INTERESTS
-                 ================================================= -->
-
-            <div class="trip-form-group interest-group">
-
-
-                <label>
-
-                    ❤️ What are you interested in?
-
-                </label>
-
-
-                <p class="input-help">
-
-                    Select one or more interests.
-
-                </p>
-
-
-                <div class="interests-options">
-
-
-                    <label class="interest-option">
-
-                        <input
-                            type="checkbox"
-                            name="interests[]"
-                            value="Culture & History"
-                            <?php
-                            echo in_array(
-                                "Culture & History",
-                                $selectedInterests
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🏛️ Culture & History
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="interest-option">
-
-                        <input
-                            type="checkbox"
-                            name="interests[]"
-                            value="Nature"
-                            <?php
-                            echo in_array(
-                                "Nature",
-                                $selectedInterests
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🌿 Nature
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="interest-option">
-
-                        <input
-                            type="checkbox"
-                            name="interests[]"
-                            value="Adventure"
-                            <?php
-                            echo in_array(
-                                "Adventure",
-                                $selectedInterests
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🏔️ Adventure
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="interest-option">
-
-                        <input
-                            type="checkbox"
-                            name="interests[]"
-                            value="Food"
-                            <?php
-                            echo in_array(
-                                "Food",
-                                $selectedInterests
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🍜 Food
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="interest-option">
-
-                        <input
-                            type="checkbox"
-                            name="interests[]"
-                            value="Shopping"
-                            <?php
-                            echo in_array(
-                                "Shopping",
-                                $selectedInterests
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🛍️ Shopping
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="interest-option">
-
-                        <input
-                            type="checkbox"
-                            name="interests[]"
-                            value="Entertainment"
-                            <?php
-                            echo in_array(
-                                "Entertainment",
-                                $selectedInterests
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🎭 Entertainment
-                        </span>
-
-                    </label>
-
-
-                </div>
-
-
-            </div>
-
-
-
-            <!-- =================================================
-                 TRANSPORT
-                 ================================================= -->
-
-            <div class="trip-form-group transport-group">
-
-
-                <label>
-
-                    🚗 Preferred Transport
-
-                </label>
-
-
-                <div class="transport-options">
-
-
-                    <label class="transport-option">
-
-                        <input
-                            type="radio"
-                            name="transport"
-                            value="Car"
-                            <?php
-                            echo (
-                                $trip["transport_preference"]
-                                === "Car"
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🚗 Car
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="transport-option">
-
-                        <input
-                            type="radio"
-                            name="transport"
-                            value="Public Transport"
-                            <?php
-                            echo (
-                                $trip["transport_preference"]
-                                === "Public Transport"
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🚌 Public Transport
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="transport-option">
-
-                        <input
-                            type="radio"
-                            name="transport"
-                            value="Walking"
-                            <?php
-                            echo (
-                                $trip["transport_preference"]
-                                === "Walking"
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🚶 Walking
-                        </span>
-
-                    </label>
-
-
-
-                    <label class="transport-option">
-
-                        <input
-                            type="radio"
-                            name="transport"
-                            value="Bike"
-                            <?php
-                            echo (
-                                $trip["transport_preference"]
-                                === "Bike"
-                            )
-                                ? "checked"
-                                : "";
-                            ?>
-                        >
-
-                        <span>
-                            🏍️ Bike
-                        </span>
-
-                    </label>
-
-
-                </div>
-
-
-            </div>
-
-
-
-            <!-- =================================================
-                 SUBMIT
-                 ================================================= -->
-
-            <div class="trip-form-submit">
-
-
-                <button type="submit">
-
-                    💾 Update Trip
-
-                </button>
-
-
-                <p>
-
-                    Your trip details will be updated.
-                    You can then regenerate the AI itinerary
-                    using your new preferences.
-
-                </p>
-
-
-                <br>
-
-
-                <a
-                    href="itinerary.php?trip_id=<?php
-                        echo $trip_id;
+                <input
+                    type="hidden"
+                    name="trip_id"
+                    value="<?php
+                        echo $edit_trip_id;
                     ?>"
-                    class="dashboard-secondary-btn"
                 >
 
-                    ← Cancel
 
-                </a>
-
-
-            </div>
-
-
-        </form>
+                <?php
+                foreach (
+                    $results as $index => $place
+                ):
+                ?>
 
 
-    </section>
+                    <div class="destination-result">
+
+
+                        <label>
+
+
+                            <input
+                                type="radio"
+                                name="selected_place"
+                                value="<?php
+                                    echo $index;
+                                ?>"
+                                required
+                            >
+
+
+                            <strong>
+
+                                <?php
+
+                                echo htmlspecialchars(
+                                    $place["display_name"]
+                                );
+
+                                ?>
+
+                            </strong>
+
+
+                        </label>
+
+
+
+                        <div class="coordinates">
+
+
+                            <strong>
+                                Latitude:
+                            </strong>
+
+                            <?php
+
+                            echo htmlspecialchars(
+                                $place["lat"]
+                            );
+
+                            ?>
+
+
+                            <br>
+
+
+                            <strong>
+                                Longitude:
+                            </strong>
+
+                            <?php
+
+                            echo htmlspecialchars(
+                                $place["lon"]
+                            );
+
+                            ?>
+
+
+                        </div>
+
+
+                    </div>
+
+
+                <?php endforeach; ?>
+
+
+
+                <div class="select-button">
+
+
+                    <button type="submit">
+
+                        Continue with Selected Destination →
+
+                    </button>
+
+
+                </div>
+
+
+            </form>
+
+
+        </section>
+
+
+    <?php endif; ?>
+
+
+
+    <!-- BACK BUTTON -->
+
+    <div style="text-align:center;">
+
+
+        <a
+            href="plan_trip.php<?php
+                echo $edit_trip_id > 0
+                    ? '?trip_id=' . $edit_trip_id
+                    : '';
+            ?>"
+            class="back-link"
+        >
+
+            ← Back to Trip Planning
+
+        </a>
+
+
+    </div>
 
 
 </main>
-
-
-
-<!-- =====================================================
-     FOOTER
-     ===================================================== -->
-
-<footer class="dashboard-footer">
-
-
-    <div class="footer-logo">
-
-        ✈ Wander<span>AI</span>
-
-    </div>
-
-
-    <p>
-
-        Your intelligent travel planning companion.
-
-    </p>
-
-
-    <div class="copyright">
-
-        © 2026 WanderAI — AI Travel Itinerary Optimizer
-
-    </div>
-
-
-</footer>
 
 
 </body>

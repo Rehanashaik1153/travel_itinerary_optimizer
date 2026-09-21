@@ -1,6 +1,6 @@
 <?php
 /* ============================================================
-   WANDERAI - APPLY BUDGET OPTIMIZATION
+   TRIPNEST - APPLY BUDGET OPTIMIZATION
    ------------------------------------------------------------
    This file:
    1. Loads the user's saved itinerary

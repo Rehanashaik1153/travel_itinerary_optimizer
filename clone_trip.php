@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - CLONE A TRIP
+   TRIPNEST - CLONE A TRIP
    Duplicates a trip's settings (destination, dates,
    budget, travelers, interests, transport) as a new
    trip row, but leaves out the generated itinerary and

@@ -1,6 +1,6 @@
 <?php
 /* =====================================================
-   WANDERAI - DYNAMIC TRIP BUDGET + ALTERNATIVE OPTIMIZER
+   TRIPNEST - DYNAMIC TRIP BUDGET + ALTERNATIVE OPTIMIZER
    ===================================================== */
 
 session_start();
@@ -1699,7 +1699,7 @@ if (
 >
 
 <title>
-    Trip Budget | WanderAI
+    Trip Budget | TripNest
 </title>
 
 <link
@@ -2256,7 +2256,7 @@ if (
 </span>
 
 <span>
-    Wander<span>AI</span>
+    Trip<span>Nest</span>
 </span>
 
 </a>
@@ -2326,7 +2326,7 @@ echo strtoupper(
 <div>
 
 <p class="dashboard-small-title">
-    WANDERAI BUDGET MANAGEMENT
+    TRIPNEST BUDGET MANAGEMENT
 </p>
 
 <h1>
@@ -2840,7 +2840,7 @@ echo strtoupper(
 </h2>
 
 <p>
-    WanderAI compares your current estimated
+    TripNest compares your current estimated
     expenses with lower-cost alternatives and
     calculates the potential savings.
 </p>
@@ -3333,7 +3333,7 @@ book the saved itinerary.
 
 <div class="footer-logo">
 
-✈ Wander<span>AI</span>
+✈ Trip<span>Nest</span>
 
 </div>
 
@@ -3343,7 +3343,7 @@ book the saved itinerary.
 
 <div class="copyright">
 
-© 2026 WanderAI —
+© 2026 TripNest —
 AI Travel Itinerary Optimizer
 
 </div>

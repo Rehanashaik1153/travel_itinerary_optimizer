@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - REORDER A DAY'S SCHEDULE
+   TRIPNEST - REORDER A DAY'S SCHEDULE
    Called via fetch() from itinerary.php after a
    drag-and-drop reorder. Recomputes travel time and
    start/end times for that day only, then saves.

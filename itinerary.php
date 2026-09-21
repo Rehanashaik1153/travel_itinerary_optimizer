@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - DYNAMIC AI ITINERARY PAGE
+   TRIPNEST - DYNAMIC AI ITINERARY PAGE
    ===================================================== */
 
 session_start();
@@ -876,7 +876,7 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Generating your itinerary... - WanderAI</title>
+        <title>Generating your itinerary... - TripNest</title>
         <link rel="stylesheet" href="style.css">
     </head>
     <body class="generating-body">
@@ -888,7 +888,7 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
 
             <div class="generating-spinner"></div>
 
-            <h1>🤖 WanderAI is building your itinerary...</h1>
+            <h1>🤖 TripNest is building your itinerary...</h1>
 
             <p>
                 Discovering places, checking opening hours, and
@@ -1701,7 +1701,7 @@ if (
    ===================================================== */
 
 $page_title =
-    "My Itinerary | WanderAI";
+    "My Itinerary | TripNest";
 
 ?>
 
@@ -1757,7 +1757,7 @@ $page_title =
         </span>
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>
@@ -1875,7 +1875,7 @@ $page_title =
         </h1>
 
         <p>
-            WanderAI analyzed your destination,
+            TripNest analyzed your destination,
             interests and travel preferences to create
             a personalized itinerary.
         </p>
@@ -2143,7 +2143,7 @@ $page_title =
         </h2>
 
         <p>
-            WanderAI discovered places near your
+            TripNest discovered places near your
             destination, matched them with your interests
             and arranged them into a dynamic day-wise
             schedule using travel distance, estimated
@@ -2300,12 +2300,6 @@ $page_title =
               body_length=<?php echo htmlspecialchars((string)($wAttempt['body_length'] ?? 0)); ?>
 <?php if (isset($wAttempt['element_count'])): ?>
               element_count=<?php echo htmlspecialchars((string)$wAttempt['element_count']); ?>
-<?php endif; ?>
-<?php if (!empty($wAttempt['json_error'])): ?>
-              json_error=<?php echo htmlspecialchars($wAttempt['json_error']); ?>
-<?php endif; ?>
-<?php if (!empty($wAttempt['body_snippet'])): ?>
-              body_snippet=<?php echo htmlspecialchars($wAttempt['body_snippet']); ?>
 <?php endif; ?>
 <?php endforeach; ?>
 <?php endif; ?>
@@ -3295,7 +3289,7 @@ if ($wanderWDebug === null):
 
     <div class="footer-logo">
 
-        ✈ Wander<span>AI</span>
+        ✈ Trip<span>Nest</span>
 
     </div>
 
@@ -3304,7 +3298,7 @@ if ($wanderWDebug === null):
 
     <div class="copyright">
 
-        © 2026 WanderAI — AI Travel Itinerary Optimizer
+        © 2026 TripNest — AI Travel Itinerary Optimizer
 
     </div>
 

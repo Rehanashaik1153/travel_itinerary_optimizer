@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - SHARED ITINERARY HELPERS
+   TRIPNEST - SHARED ITINERARY HELPERS
    Used by: reorder_itinerary.php, export_ics.php,
    itinerary_print.php, itinerary.php (weather badges)
    ===================================================== */
@@ -193,7 +193,7 @@ function wanderGetDailyWeather(
             CURLOPT_CONNECTTIMEOUT => 4,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_HTTPHEADER => [
-                "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                "User-Agent: TripNest-Travel-Itinerary-Optimizer/1.0",
                 "Accept: application/json"
             ],
         ]);
@@ -339,10 +339,10 @@ function wanderBuildIcsCalendar(
     $lines = [];
     $lines[] = "BEGIN:VCALENDAR";
     $lines[] = "VERSION:2.0";
-    $lines[] = "PRODID:-//WanderAI//Itinerary Export//EN";
+    $lines[] = "PRODID:-//TripNest//Itinerary Export//EN";
     $lines[] = "CALSCALE:GREGORIAN";
     $lines[] = "METHOD:PUBLISH";
-    $lines[] = "X-WR-CALNAME:" . wanderIcsEscape("WanderAI Trip - " . $destination);
+    $lines[] = "X-WR-CALNAME:" . wanderIcsEscape("TripNest Trip - " . $destination);
 
     foreach ($generatedItinerary as $dayData) {
 
@@ -383,8 +383,8 @@ function wanderBuildIcsCalendar(
             );
 
             $uid =
-                "wanderai-" . $tripId . "-" .
-                $dayNumber . "-" . $index . "@wanderai.local";
+                "tripnest-" . $tripId . "-" .
+                $dayNumber . "-" . $index . "@tripnest.local";
 
             $summary =
                 (!empty($place["is_break"]) ? "Lunch: " : "") .

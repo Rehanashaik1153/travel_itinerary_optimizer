@@ -89,7 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     >
 
     <title>
-        Choose Destination | WanderAI
+        Choose Destination | TripNest
     </title>
 
 
@@ -254,7 +254,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
     </a>

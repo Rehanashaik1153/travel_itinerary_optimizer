@@ -1,7 +1,7 @@
 <?php
 
 /* =====================================================
-   WANDERAI - DYNAMIC PLACES FETCHER
+   TRIPNEST - DYNAMIC PLACES FETCHER
    ===================================================== */
 
 function getNearbyPlaces(
@@ -353,7 +353,7 @@ function getNearbyPlaces(
 
                 CURLOPT_RETURNTRANSFER => true,
 
-                CURLOPT_TIMEOUT => 12,
+                CURLOPT_TIMEOUT => 20,
 
                 CURLOPT_CONNECTTIMEOUT => 3,
 
@@ -363,7 +363,7 @@ function getNearbyPlaces(
 
                     "Content-Type: application/x-www-form-urlencoded",
 
-                    "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                    "User-Agent: TripNest-Travel-Itinerary-Optimizer/1.0",
 
                     "Accept: application/json"
 
@@ -399,7 +399,7 @@ function getNearbyPlaces(
         /* Hard cap: never wait more than ~20s in total,
            no matter how many mirrors are unresponsive. */
 
-        $deadline = microtime(true) + 12;
+        $deadline = microtime(true) + 20;
 
         while (
             $running > 0 &&
@@ -713,12 +713,12 @@ function getNearbyPlaces(
                     CURLOPT_POST => true,
                     CURLOPT_POSTFIELDS => http_build_query(["data" => $query]),
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 12,
+                    CURLOPT_TIMEOUT => 16,
                     CURLOPT_CONNECTTIMEOUT => 3,
                     CURLOPT_FOLLOWLOCATION => true,
                     CURLOPT_HTTPHEADER => [
                         "Content-Type: application/x-www-form-urlencoded",
-                        "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                        "User-Agent: TripNest-Travel-Itinerary-Optimizer/1.0",
                         "Accept: application/json"
                     ]
                 ]);
@@ -730,7 +730,7 @@ function getNearbyPlaces(
 
             $running = null;
 
-            $deadline = microtime(true) + 13;
+            $deadline = microtime(true) + 16;
 
             do {
 
@@ -1635,7 +1635,7 @@ function getNearbyAccommodation(
     $types = ["hotel", "resort", "guest_house", "hostel", "motel"];
 
     $query =
-        '[out:json][timeout:20];(' .
+        '[out:json][timeout:14];(' .
         'nwr(around:' . $radius . ',' . $latitude . ',' . $longitude . ')' .
         '[tourism~"' . implode("|", $types) . '"];' .
         ');out center tags 20;';
@@ -1659,7 +1659,7 @@ function getNearbyAccommodation(
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_HTTPHEADER => [
                 "Content-Type: application/x-www-form-urlencoded",
-                "User-Agent: WanderAI-Travel-Itinerary-Optimizer/1.0",
+                "User-Agent: TripNest-Travel-Itinerary-Optimizer/1.0",
                 "Accept: application/json"
             ],
         ]);

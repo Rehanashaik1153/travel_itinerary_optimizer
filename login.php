@@ -67,7 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Login | WanderAI</title>
+    <title>Login | TripNest</title>
 
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="travel-theme.css">
@@ -89,7 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <span class="wander-auth-logo-icon">✈</span>
 
             <span class="wander-auth-logo-text">
-                Wander<span>AI</span>
+                Trip<span>Nest</span>
             </span>
 
         </a>

@@ -63,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password | WanderAI</title>
+    <title>Reset Password | TripNest</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="travel-theme.css">
 </head>
@@ -73,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
             <div class="auth-header">
                 <div style="font-size:42px; margin-bottom:10px;">🔑</div>
                 <h1>Reset password</h1>
-                <p>Create a new password for your WanderAI account.</p>
+                <p>Create a new password for your TripNest account.</p>
             </div>
 
             <?php if (!empty($message)): ?>

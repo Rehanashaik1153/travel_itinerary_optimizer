@@ -125,7 +125,7 @@ if ($selectedPlace === null) {
 
 
     <title>
-        Destination Selected | WanderAI
+        Destination Selected | TripNest
     </title>
 
 
@@ -251,7 +251,7 @@ if ($selectedPlace === null) {
 
 
         <span>
-            Wander<span>AI</span>
+            Trip<span>Nest</span>
         </span>
 
 

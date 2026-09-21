@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>WanderAI | AI Travel Itinerary Optimizer</title>
+    <title>TripNest | AI Travel Itinerary Optimizer</title>
 
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="travel-theme.css">
@@ -19,7 +19,7 @@
 
         <a href="index.php" class="reference-logo">
             <span class="reference-logo-icon">✈</span>
-            <span>WanderAI</span>
+            <span>TripNest</span>
         </a>
 
         <nav class="reference-nav-links">
@@ -179,7 +179,7 @@
 
         <div class="reference-section-heading">
 
-            <span class="reference-small-title">WHY CHOOSE WANDERAI</span>
+            <span class="reference-small-title">WHY CHOOSE TRIPNEST</span>
 
             <h2>Everything you need for a better trip</h2>
 
@@ -385,7 +385,7 @@
 
                 <a href="index.php" class="reference-logo footer-logo">
                     <span class="reference-logo-icon">✈</span>
-                    <span>WanderAI</span>
+                    <span>TripNest</span>
                 </a>
 
                 <p>
@@ -437,7 +437,7 @@
 
 
         <div class="reference-footer-bottom">
-            © 2026 WanderAI. All Rights Reserved.
+            © 2026 TripNest. All Rights Reserved.
         </div>
 
     </footer>
