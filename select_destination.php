@@ -1,80 +1,181 @@
 <?php
 
+/*
+=====================================================
+TRIPNEST - SELECT DESTINATION
+=====================================================
+*/
+
 session_start();
 
 if (!isset($_SESSION["user_id"])) {
-
     header("Location: login.php");
     exit();
-
 }
-
-
-/* =====================================================
-   CHECK WHETHER SEARCH RESULTS EXIST
-   ===================================================== */
 
 if (!isset($_SESSION["geocode_results"])) {
-
     header("Location: destination.php");
     exit();
-
 }
 
-
-$results = $_SESSION["geocode_results"];
+$results =
+    $_SESSION["geocode_results"];
 
 $selectedPlace = null;
 
+/*
+=====================================================
+RECOVER EDIT TRIP ID
+=====================================================
+*/
 
-/* =====================================================
-   GET EDIT TRIP ID
-   ===================================================== */
+$edit_trip_id = 0;
 
-$edit_trip_id = isset($_POST["trip_id"])
-    ? (int) $_POST["trip_id"]
-    : 0;
+if (
+    isset($_POST["trip_id"]) &&
+    (int)$_POST["trip_id"] > 0
+) {
+    $edit_trip_id =
+        (int)$_POST["trip_id"];
+}
 
+if (
+    $edit_trip_id <= 0 &&
+    isset($_SESSION["destination_edit_trip_id"]) &&
+    (int)$_SESSION["destination_edit_trip_id"] > 0
+) {
+    $edit_trip_id =
+        (int)$_SESSION["destination_edit_trip_id"];
+}
 
-/* =====================================================
-   CHECK SELECTED LOCATION
-   ===================================================== */
+/*
+=====================================================
+PROCESS DESTINATION SELECTION
+=====================================================
+*/
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-
     if (isset($_POST["selected_place"])) {
 
-
-        $index = (int) $_POST["selected_place"];
-
-
-        /* Check whether selected index exists */
+        $index =
+            (int)$_POST["selected_place"];
 
         if (isset($results[$index])) {
-
 
             $selectedPlace =
                 $results[$index];
 
+            /*
+            -----------------------------------------
+            ENGLISH DESTINATION NAME
+            -----------------------------------------
+            */
 
-            /* =============================================
-               SAVE SELECTED DESTINATION IN SESSION
-               ============================================= */
+            $displayName =
+                trim(
+                    (string)(
+                        $selectedPlace["english_display_name"]
+                        ?? $selectedPlace["english_name"]
+                        ?? $selectedPlace["display_name"]
+                        ?? ""
+                    )
+                );
+
+            if ($displayName === "") {
+
+                $displayName =
+                    "Selected Destination";
+            }
+
+            /*
+            -----------------------------------------
+            COORDINATES
+            -----------------------------------------
+            */
+
+            $latitude =
+                isset($selectedPlace["lat"])
+                    ? (float)$selectedPlace["lat"]
+                    : 0;
+
+            $longitude =
+                isset($selectedPlace["lon"])
+                    ? (float)$selectedPlace["lon"]
+                    : 0;
+
+            if (
+                $latitude == 0 &&
+                $longitude == 0
+            ) {
+
+                header(
+                    "Location: destination.php"
+                );
+
+                exit();
+            }
+
+            /*
+            -----------------------------------------
+            SAVE DESTINATION IN SESSION
+            -----------------------------------------
+            */
 
             $_SESSION["selected_destination"] =
-                $selectedPlace["display_name"];
-
+                $displayName;
 
             $_SESSION["destination_latitude"] =
-                (float) $selectedPlace["lat"];
-
+                $latitude;
 
             $_SESSION["destination_longitude"] =
-                (float) $selectedPlace["lon"];
+                $longitude;
 
+            /*
+            -----------------------------------------
+            SAVE COMPLETE PLACE
+            -----------------------------------------
+            */
 
-            /* Save edit trip ID if editing */
+            $_SESSION["selected_destination_place"] = [
+                "name" =>
+                    $displayName,
+
+                "display_name" =>
+                    $displayName,
+
+                "latitude" =>
+                    $latitude,
+
+                "longitude" =>
+                    $longitude,
+
+                "address" =>
+                    $selectedPlace["address"]
+                    ?? [],
+
+                "type" =>
+                    $selectedPlace["type"]
+                    ?? "",
+
+                "class" =>
+                    $selectedPlace["class"]
+                    ?? "",
+
+                "osm_type" =>
+                    $selectedPlace["osm_type"]
+                    ?? "",
+
+                "osm_id" =>
+                    $selectedPlace["osm_id"]
+                    ?? ""
+            ];
+
+            /*
+            -----------------------------------------
+            PRESERVE EDIT TRIP
+            -----------------------------------------
+            */
 
             if ($edit_trip_id > 0) {
 
@@ -86,401 +187,279 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 unset(
                     $_SESSION["destination_edit_trip_id"]
                 );
-
             }
-
         }
-
     }
-
 }
 
-
-/* =====================================================
-   INVALID SELECTION
-   ===================================================== */
+/*
+=====================================================
+NO SELECTION
+=====================================================
+*/
 
 if ($selectedPlace === null) {
 
-    header("Location: destination.php");
-    exit();
+    /*
+    If the selection has already been stored,
+    recover it instead of losing the destination.
+    */
 
+    if (
+        isset($_SESSION["selected_destination"]) &&
+        isset($_SESSION["destination_latitude"]) &&
+        isset($_SESSION["destination_longitude"])
+    ) {
+
+        $selectedPlace = [
+            "display_name" =>
+                $_SESSION["selected_destination"],
+
+            "lat" =>
+                $_SESSION["destination_latitude"],
+
+            "lon" =>
+                $_SESSION["destination_longitude"]
+        ];
+
+    } else {
+
+        header(
+            "Location: destination.php"
+        );
+
+        exit();
+    }
 }
 
+/*
+=====================================================
+DISPLAY VALUES
+=====================================================
+*/
+
+$displayName =
+    $_SESSION["selected_destination"]
+    ?? $selectedPlace["english_display_name"]
+    ?? $selectedPlace["display_name"]
+    ?? "Selected Destination";
+
+$latitude =
+    (float)(
+        $_SESSION["destination_latitude"]
+        ?? $selectedPlace["lat"]
+        ?? 0
+    );
+
+$longitude =
+    (float)(
+        $_SESSION["destination_longitude"]
+        ?? $selectedPlace["lon"]
+        ?? 0
+    );
+
 ?>
-
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
 
     <meta charset="UTF-8">
 
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
 
-
     <title>
-        Destination Selected | TripNest
+        TripNest - Destination Selected
     </title>
-
-
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
-
 
     <style>
 
+        * {
+            box-sizing: border-box;
+        }
 
-        .selected-container {
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+            background:
+                #f5f7fb;
+            color:
+                #1f2937;
+        }
 
-            max-width: 750px;
-            margin: 70px auto;
+        .page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 30px;
-
         }
 
-
-        .selected-card {
-
-            background: white;
-            padding: 35px;
-            border-radius: 16px;
-
+        .card {
+            width: 100%;
+            max-width: 760px;
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 40px;
             box-shadow:
-                0 5px 25px rgba(0,0,0,0.08);
-
-            text-align: center;
-
+                0 12px 35px rgba(
+                    15,
+                    23,
+                    42,
+                    0.10
+                );
         }
 
-
-        .selected-icon {
-
-            font-size: 55px;
-            margin-bottom: 15px;
-
+        .title {
+            margin: 0 0 10px;
+            font-size: 30px;
+            font-weight: 700;
         }
 
-
-        .selected-card h1 {
-
-            margin-bottom: 15px;
-
+        .subtitle {
+            margin: 0;
+            color: #64748b;
+            font-size: 15px;
         }
 
-
-        .selected-place {
-
-            font-size: 20px;
-            font-weight: bold;
-            margin: 20px 0;
-
+        .destination-card {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
         }
 
+        .destination-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.4;
+        }
 
         .coordinates {
-
-            background: #f5f7fa;
-            padding: 18px;
-            border-radius: 10px;
-            margin-top: 20px;
-
+            margin-top: 12px;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.7;
         }
 
-
-        .coordinate-row {
-
-            margin: 8px 0;
-
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+            flex-wrap: wrap;
         }
 
-
-        .continue-btn {
-
-            display: inline-block;
-            margin-top: 25px;
-            padding: 14px 28px;
-            border-radius: 8px;
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 9px;
             text-decoration: none;
-            font-weight: bold;
-
+            font-size: 15px;
+            font-weight: 600;
         }
 
-
-        .change-btn {
-
-            display: inline-block;
-            margin-top: 15px;
-            text-decoration: none;
-
+        .primary {
+            background: #2563eb;
+            color: #ffffff;
         }
 
+        .secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .primary:hover {
+            background: #1d4ed8;
+        }
+
+        .secondary:hover {
+            background: #cbd5e1;
+        }
 
     </style>
-    <link rel="stylesheet" href="travel-theme.css">
 
 </head>
 
+<body>
 
-<body class="dashboard-body">
+<div class="page">
 
+    <div class="card">
 
-<!-- =====================================================
-     NAVIGATION
-     ===================================================== -->
-
-<header class="dashboard-navbar">
-
-
-    <a
-        href="dashboard.php"
-        class="logo"
-    >
-
-
-        <span class="logo-icon">
-            ✈
-        </span>
-
-
-        <span>
-            Trip<span>Nest</span>
-        </span>
-
-
-    </a>
-
-
-
-    <nav class="dashboard-nav">
-
-
-        <a href="dashboard.php">
-            Dashboard
-        </a>
-
-
-        <a
-            href="plan_trip.php"
-            class="active"
-        >
-            Plan Trip
-        </a>
-
-
-        <a href="my_trips.php">
-            My Trips
-        </a>
-
-
-    </nav>
-
-
-
-    <div class="user-menu">
-
-
-        <span class="user-name">
-
-
-            <?php
-
-            echo htmlspecialchars(
-                $_SESSION["username"]
-            );
-
-            ?>
-
-
-        </span>
-
-
-
-        <a
-            href="logout.php"
-            class="logout-btn"
-        >
-
-            Logout
-
-        </a>
-
-
-    </div>
-
-
-</header>
-
-
-
-<!-- =====================================================
-     MAIN CONTENT
-     ===================================================== -->
-
-<main class="selected-container">
-
-
-    <div class="selected-card">
-
-
-        <!-- SUCCESS ICON -->
-
-        <div class="selected-icon">
-
-            ✅
-
-        </div>
-
-
-
-        <p class="dashboard-small-title">
-
-            DESTINATION SELECTED
-
-        </p>
-
-
-
-        <h1>
-
-            Perfect! We found your destination.
-
+        <h1 class="title">
+            Destination Selected
         </h1>
 
-
-
-        <!-- SELECTED LOCATION -->
-
-        <div class="selected-place">
-
-
-            <?php
-
-            echo htmlspecialchars(
-                $selectedPlace["display_name"]
-            );
-
-            ?>
-
-
-        </div>
-
-
-
-        <!-- COORDINATES -->
-
-        <div class="coordinates">
-
-
-            <div class="coordinate-row">
-
-
-                <strong>
-                    Latitude:
-                </strong>
-
-
-                <?php
-
-                echo htmlspecialchars(
-                    $selectedPlace["lat"]
-                );
-
-                ?>
-
-
-            </div>
-
-
-
-            <div class="coordinate-row">
-
-
-                <strong>
-                    Longitude:
-                </strong>
-
-
-                <?php
-
-                echo htmlspecialchars(
-                    $selectedPlace["lon"]
-                );
-
-                ?>
-
-
-            </div>
-
-
-        </div>
-
-
-
-        <p>
-
-
-            📍 Your location has been identified successfully.
-            You don't need to enter the coordinates manually.
-
-
+        <p class="subtitle">
+            Your destination has been selected successfully.
         </p>
 
+        <div class="destination-card">
 
+            <div class="destination-name">
+                <?= htmlspecialchars(
+                    $displayName,
+                    ENT_QUOTES,
+                    "UTF-8"
+                ) ?>
+            </div>
 
-        <!-- CONTINUE TO PLAN TRIP -->
+            <div class="coordinates">
 
-        <a
-            href="plan_trip.php<?php
-                echo $edit_trip_id > 0
-                    ? '?trip_id=' . $edit_trip_id
-                    : '';
-            ?>"
-            class="dashboard-primary-btn continue-btn"
-        >
+                Latitude:
+                <?= htmlspecialchars(
+                    (string)$latitude,
+                    ENT_QUOTES,
+                    "UTF-8"
+                ) ?>
 
+                <br>
 
-            Continue to Trip Planning →
+                Longitude:
+                <?= htmlspecialchars(
+                    (string)$longitude,
+                    ENT_QUOTES,
+                    "UTF-8"
+                ) ?>
 
+            </div>
 
-        </a>
+        </div>
 
+        <div class="actions">
 
+            <a
+                href="destination.php"
+                class="button secondary"
+            >
+                Change Destination
+            </a>
 
-        <br>
+            <a
+                href="plan_trip.php<?= $edit_trip_id > 0
+                    ? "?trip_id=" . $edit_trip_id
+                    : "" ?>"
+                class="button primary"
+            >
+                Continue to Trip Planning
+            </a>
 
-
-
-        <!-- CHANGE DESTINATION -->
-
-        <a
-            href="destination.php<?php
-                echo $edit_trip_id > 0
-                    ? '?trip_id=' . $edit_trip_id
-                    : '';
-            ?>"
-            class="change-btn"
-        >
-
-
-            ← Choose a Different Destination
-
-
-        </a>
-
+        </div>
 
     </div>
 
-
-</main>
-
+</div>
 
 </body>
 

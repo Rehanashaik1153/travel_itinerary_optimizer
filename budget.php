@@ -90,7 +90,7 @@ $userBudget =
 
 $transportRaw =
     trim(
-        strtolower(
+        mb_strtolower(
             $trip["transport_preference"] ?? "car"
         )
     );
@@ -192,7 +192,7 @@ function estimatePlaceCost($place)
 
 
     $text =
-        strtolower(
+        mb_strtolower(
             (string)getPlaceValue(
                 $place,
                 [
@@ -216,7 +216,7 @@ function estimatePlaceCost($place)
 
 
     $category =
-        strtolower(
+        mb_strtolower(
             (string)getPlaceValue(
                 $place,
                 [
@@ -256,7 +256,7 @@ function isFreeOrCheapPlace($place)
 
 
     $category =
-        strtolower(
+        mb_strtolower(
             (string)getPlaceValue(
                 $place,
                 [
@@ -297,12 +297,12 @@ $currentAccommodationCategory =
 if ($accommodation !== null) {
 
     $accommodationCategory =
-        strtolower(
+        mb_strtolower(
             $accommodation["category"] ?? ""
         );
 
     $accommodationName =
-        strtolower(
+        mb_strtolower(
             $accommodation["name"] ?? ""
         );
 
@@ -789,7 +789,7 @@ if (
 
             "type" => "accommodation",
 
-            "icon" => "🏨",
+            "icon" => "",
 
             "title" =>
                 "Choose cheaper accommodation",
@@ -852,7 +852,7 @@ if (
 
         "type" => "food",
 
-        "icon" => "🍽️",
+        "icon" => "",
 
         "title" =>
             "Choose lower-cost meals",
@@ -956,7 +956,7 @@ if (
 
         "type" => "transport",
 
-        "icon" => "🚌",
+        "icon" => "",
 
         "title" =>
             "Use a cheaper transport option",
@@ -1240,7 +1240,7 @@ if (!empty($activityReplacements)) {
 
             "type" => "activity",
 
-            "icon" => "🎟️",
+            "icon" => "",
 
             "title" =>
                 "Replace a paid attraction",
@@ -1291,7 +1291,7 @@ if (!empty($activityReplacements)) {
 
             "type" => "activity",
 
-            "icon" => "🎟️",
+            "icon" => "",
 
             "title" =>
                 "Replace " .
@@ -1395,7 +1395,7 @@ if (
 
         "type" => "misc",
 
-        "icon" => "🧾",
+        "icon" => "",
 
         "title" =>
             "Reduce miscellaneous expenses",
@@ -1561,7 +1561,7 @@ if (
                 continue;
             }
 
-            $key = strtolower(trim($replacement["current"]));
+            $key = mb_strtolower(trim($replacement["current"]));
 
             $replacementByName[$key] = $replacement["alternative_place"];
         }
@@ -1588,7 +1588,7 @@ if (
                     continue;
                 }
 
-                $nameKey = strtolower(trim($place["name"] ?? ""));
+                $nameKey = mb_strtolower(trim($place["name"] ?? ""));
 
                 if (!isset($replacementByName[$nameKey])) {
                     continue;
@@ -2251,9 +2251,7 @@ if (
     class="logo"
 >
 
-<span class="logo-icon">
-    ✈
-</span>
+
 
 <span>
     Trip<span>Nest</span>
@@ -2330,7 +2328,7 @@ echo strtoupper(
 </p>
 
 <h1>
-    💰 Trip Budget
+    Trip Budget
 </h1>
 
 <p>
@@ -2347,7 +2345,7 @@ echo strtoupper(
     href="itinerary.php?trip_id=<?php echo $trip_id; ?>"
     class="budget-action-btn"
 >
-    🗓️ View Itinerary
+    View Itinerary
 </a>
 
 </div>
@@ -2371,7 +2369,7 @@ echo strtoupper(
 <section class="budget-apply-banner">
 
     <div>
-        <strong>⚠️ Estimated trip cost exceeds your budget.</strong>
+        <strong>Estimated trip cost exceeds your budget.</strong>
         <p>
             We found
             <?php echo count($activityReplacements); ?>
@@ -2387,7 +2385,7 @@ echo strtoupper(
             class="budget-action-btn budget-apply-btn"
             onclick="return confirm('Replace the over-budget places in your itinerary with cheaper alternatives?');"
         >
-            🔁 Apply Budget-Friendly Itinerary
+            Apply Budget-Friendly Itinerary
         </button>
     </form>
 
@@ -2404,9 +2402,7 @@ echo strtoupper(
 
 <div class="budget-card">
 
-<div class="budget-card-icon">
-    💰
-</div>
+
 
 <span>
     Your Budget
@@ -2425,9 +2421,7 @@ echo strtoupper(
 
 <div class="budget-card">
 
-<div class="budget-card-icon">
-    🧮
-</div>
+
 
 <span>
     Estimated Total
@@ -2446,9 +2440,7 @@ echo strtoupper(
 
 <div class="budget-card">
 
-<div class="budget-card-icon">
-    📅
-</div>
+
 
 <span>
     Trip Duration
@@ -2464,9 +2456,7 @@ echo strtoupper(
 
 <div class="budget-card">
 
-<div class="budget-card-icon">
-    👥
-</div>
+
 
 <span>
     Travelers
@@ -2572,7 +2562,7 @@ echo strtoupper(
 
 <div class="budget-row-label">
 
-<span>🏨</span>
+<span></span>
 
 <div>
 
@@ -2604,7 +2594,7 @@ echo strtoupper(
 
 <div class="budget-row-label">
 
-<span>🍽️</span>
+<span></span>
 
 <div>
 
@@ -2637,7 +2627,7 @@ echo strtoupper(
 
 <div class="budget-row-label">
 
-<span>🚗</span>
+<span></span>
 
 <div>
 
@@ -2668,7 +2658,7 @@ echo strtoupper(
 
 <div class="budget-row-label">
 
-<span>🎟️</span>
+<span></span>
 
 <div>
 
@@ -2702,7 +2692,7 @@ echo strtoupper(
 
 <div class="budget-row-label">
 
-<span>🧾</span>
+<span></span>
 
 <div>
 
@@ -2778,7 +2768,7 @@ echo strtoupper(
 <?php if (!empty($daysOverBudget)): ?>
 
     <div class="budget-alert budget-alert-error">
-        ⚠️
+       
         <?php echo count($daysOverBudget); ?>
         day<?php echo count($daysOverBudget) === 1 ? "" : "s"; ?>
         <?php echo count($daysOverBudget) === 1 ? "runs" : "run"; ?>
@@ -2788,7 +2778,7 @@ echo strtoupper(
 <?php elseif ($dailyBudgetShare > 0): ?>
 
     <div class="budget-alert budget-alert-success">
-        ✅ Every day fits within its share of the budget.
+        Every day fits within its share of the budget.
     </div>
 
 <?php endif; ?>
@@ -2798,7 +2788,7 @@ echo strtoupper(
     <div class="budget-row budget-day-row <?php echo $dayCost['over_share'] ? 'budget-day-over' : ''; ?>">
 
         <div class="budget-row-label">
-            <span><?php echo $dayCost['over_share'] ? '⚠️' : '📅'; ?></span>
+            <span><?php echo $dayCost['over_share'] ? '' : ''; ?></span>
             <div>
                 <strong>Day <?php echo (int)$dayCost['day']; ?></strong>
                 <?php if ($dayCost['over_share']): ?>
@@ -2836,7 +2826,7 @@ echo strtoupper(
 </p>
 
 <h2>
-    🤖 Recommended lower-cost alternatives
+    Recommended lower-cost alternatives
 </h2>
 
 <p>
@@ -3162,7 +3152,7 @@ endforeach;
 <div class="no-optimization">
 
 <strong>
-    ✅ Your current trip is already relatively
+    Your current trip is already relatively
     budget-friendly.
 </strong>
 
@@ -3189,7 +3179,7 @@ endforeach;
 <div class="alternative-places">
 
 <h3>
-    🎟️ More free / low-cost places from your itinerary
+    More free / low-cost places from your itinerary
 </h3>
 
 <p>
@@ -3268,13 +3258,11 @@ if (
 <div class="apply-optimization-box">
 
 <h3>
-    🔄 Ready to reduce your trip cost?
+    Ready to reduce your trip cost?
 </h3>
 
 <p>
-    Apply the recommended lower-cost alternatives
-    and generate a new itinerary that stays within
-    your available budget where possible.
+    
 </p>
 
 <a
@@ -3284,7 +3272,7 @@ if (
         'Apply the recommended budget alternatives and regenerate your itinerary?'
     );"
 >
-    🤖 Apply Alternatives & Regenerate Itinerary
+    Apply Alternatives & Regenerate Itinerary
 </a>
 
 </div>
@@ -3302,7 +3290,7 @@ if (
 <section class="budget-note">
 
 <strong>
-    ℹ️ Important:
+    Important:
 </strong>
 
 The amounts shown here are
@@ -3333,7 +3321,7 @@ book the saved itinerary.
 
 <div class="footer-logo">
 
-✈ Trip<span>Nest</span>
+Trip<span>Nest</span>
 
 </div>
 

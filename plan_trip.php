@@ -421,9 +421,7 @@ $page_title =
         class="logo"
     >
 
-        <span class="logo-icon">
-            ✈
-        </span>
+        
 
         <span>
             Trip<span>Nest</span>
@@ -503,11 +501,11 @@ $page_title =
 
             <?php if ($edit_trip_id > 0): ?>
 
-                Edit Your <span>Trip</span> ✏️
+                Edit Your <span>Trip</span>
 
             <?php else: ?>
 
-                Plan Your <span>Perfect Trip</span> ✨
+                Plan Your <span>Perfect Trip</span>
 
             <?php endif; ?>
 
@@ -554,9 +552,7 @@ $page_title =
 
             <div class="form-section-title">
 
-                <div class="form-section-icon">
-                    🗺️
-                </div>
+                
 
                 <div>
 
@@ -577,7 +573,7 @@ $page_title =
                 <div class="trip-form-group full-width">
 
                     <label for="destination">
-                        📍 Destination
+                        Destination
                     </label>
 
 
@@ -595,7 +591,7 @@ $page_title =
                     <?php if ($selected_destination !== ""): ?>
 
                         <p class="input-help">
-                            ✅ Destination selected successfully.
+                            Destination selected successfully.
                         </p>
 
                     <?php else: ?>
@@ -615,7 +611,7 @@ $page_title =
                         ?>"
                         class="dashboard-secondary-btn destination-change-btn"
                     >
-                        🌍 Choose / Change Destination
+                        Choose / Change Destination
                     </a>
 
                 </div>
@@ -624,7 +620,7 @@ $page_title =
                 <div class="trip-form-group">
 
                     <label for="start_date">
-                        📅 Start Date
+                        Start Date
                     </label>
 
                     <input
@@ -645,7 +641,7 @@ $page_title =
                 <div class="trip-form-group">
 
                     <label for="days">
-                        🗓️ Number of Days
+                        Number of Days
                     </label>
 
                     <input
@@ -671,9 +667,7 @@ $page_title =
 
             <div class="form-section-title preferences-title">
 
-                <div class="form-section-icon">
-                    🎯
-                </div>
+                
 
                 <div>
 
@@ -695,7 +689,7 @@ $page_title =
                 <div class="trip-form-group">
 
                     <label for="budget">
-                        💰 Total Budget (₹)
+                        Total Budget (₹)
                     </label>
 
                     <input
@@ -718,7 +712,7 @@ $page_title =
                 <div class="trip-form-group">
 
                     <label for="travelers">
-                        👥 Number of Travelers
+                        Number of Travelers
                     </label>
 
                     <input
@@ -745,7 +739,7 @@ $page_title =
             <div class="trip-form-group interest-group">
 
                 <label>
-                    ❤️ What are you interested in?
+                    What are you interested in?
                 </label>
 
                 <p class="input-help">
@@ -773,7 +767,7 @@ $page_title =
                         >
 
                         <span>
-                            🏛️ Culture & History
+                            Culture & History
                         </span>
 
                     </label>
@@ -796,7 +790,7 @@ $page_title =
                         >
 
                         <span>
-                            🌿 Nature
+                            Nature
                         </span>
 
                     </label>
@@ -819,7 +813,7 @@ $page_title =
                         >
 
                         <span>
-                            🏔️ Adventure
+                            Adventure
                         </span>
 
                     </label>
@@ -842,7 +836,7 @@ $page_title =
                         >
 
                         <span>
-                            🍜 Food
+                            Food
                         </span>
 
                     </label>
@@ -865,7 +859,7 @@ $page_title =
                         >
 
                         <span>
-                            🛍️ Shopping
+                            Shopping
                         </span>
 
                     </label>
@@ -888,7 +882,7 @@ $page_title =
                         >
 
                         <span>
-                            🎭 Entertainment
+                            Entertainment
                         </span>
 
                     </label>
@@ -902,7 +896,7 @@ $page_title =
             <div class="trip-form-group transport-group">
 
                 <label>
-                    🚗 Preferred Transport
+                    Preferred Transport
                 </label>
 
 
@@ -922,7 +916,7 @@ $page_title =
                             ?>
                         >
 
-                        <span>🚗 Car</span>
+                        <span>Car</span>
 
                     </label>
 
@@ -940,7 +934,7 @@ $page_title =
                             ?>
                         >
 
-                        <span>🚌 Public Transport</span>
+                        <span>Public Transport</span>
 
                     </label>
 
@@ -958,7 +952,7 @@ $page_title =
                             ?>
                         >
 
-                        <span>🚶 Walking</span>
+                        <span>Walking</span>
 
                     </label>
 
@@ -976,7 +970,7 @@ $page_title =
                             ?>
                         >
 
-                        <span>🏍️ Bike</span>
+                        <span>Bike</span>
 
                     </label>
 
@@ -992,11 +986,11 @@ $page_title =
 
                     <?php if ($edit_trip_id > 0): ?>
 
-                        🔄 Update & Regenerate Itinerary
+                        Update & Regenerate Itinerary
 
                     <?php else: ?>
 
-                        🤖 Generate My AI Itinerary
+                        Generate My AI Itinerary
 
                     <?php endif; ?>
 
@@ -1008,7 +1002,7 @@ $page_title =
                     <?php
                     echo $edit_trip_id > 0
                         ? "Your trip details will be updated and TripNest will regenerate your itinerary."
-                        : "TripNest will analyze your destination, preferences, budget and available travel time.";
+                        :"";
                     ?>
 
                 </p>
@@ -1026,7 +1020,7 @@ $page_title =
 <footer class="dashboard-footer">
 
     <div class="footer-logo">
-        ✈ Trip<span>Nest</span>
+        Trip<span>Nest</span>
     </div>
 
     

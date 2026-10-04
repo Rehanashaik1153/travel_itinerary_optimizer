@@ -18,7 +18,7 @@
     <header class="reference-navbar">
 
         <a href="index.php" class="reference-logo">
-            <span class="reference-logo-icon">✈</span>
+            
             <span>TripNest</span>
         </a>
 
@@ -74,7 +74,7 @@
             <div class="reference-hero-benefits">
 
                 <div class="hero-benefit">
-                    <span class="hero-benefit-icon">🤖</span>
+                    
                     <div>
                         <strong>AI Powered</strong>
                         <small>Itineraries</small>
@@ -82,7 +82,7 @@
                 </div>
 
                 <div class="hero-benefit">
-                    <span class="hero-benefit-icon">⬡</span>
+                    
                     <div>
                         <strong>100%</strong>
                         <small>Personalized</small>
@@ -90,7 +90,7 @@
                 </div>
 
                 <div class="hero-benefit">
-                    <span class="hero-benefit-icon">🎧</span>
+                    
                     <div>
                         <strong>24/7</strong>
                         <small>Support</small>
@@ -125,7 +125,7 @@
 
                 <span class="step-number">01</span>
 
-                <div class="step-icon blue-step-icon">⌖</div>
+                
 
                 <div class="step-content">
                     <h3>Choose Destination</h3>
@@ -142,7 +142,7 @@
 
                 <span class="step-number">02</span>
 
-                <div class="step-icon green-step-icon">☷</div>
+                
 
                 <div class="step-content">
                     <h3>Set Preferences</h3>
@@ -159,7 +159,7 @@
 
                 <span class="step-number">03</span>
 
-                <div class="step-icon purple-step-icon">✦</div>
+                
 
                 <div class="step-content">
                     <h3>Get AI Itinerary</h3>
@@ -190,7 +190,7 @@
 
             <div class="reference-feature-card">
 
-                <div class="reference-feature-icon blue-feature">🤖</div>
+                
 
                 <h3>AI-Powered Planning</h3>
 
@@ -204,8 +204,7 @@
 
             <div class="reference-feature-card">
 
-                <div class="reference-feature-icon green-feature">▱</div>
-
+                
                 <h3>Budget Optimization</h3>
 
                 <p>
@@ -218,7 +217,7 @@
 
             <div class="reference-feature-card">
 
-                <div class="reference-feature-icon orange-feature">⌘</div>
+                
 
                 <h3>Smart Route Planning</h3>
 
@@ -232,7 +231,7 @@
 
             <div class="reference-feature-card">
 
-                <div class="reference-feature-icon pink-feature">♡</div>
+                
 
                 <h3>Personalized Experience</h3>
 
@@ -277,7 +276,7 @@
                 <div class="destination-name">Hyderabad</div>
 
                 <div class="destination-country">
-                    <span>🇮🇳</span> India
+                    <span></span> India
                 </div>
 
             </div>
@@ -296,7 +295,7 @@
                 <div class="destination-name">Goa</div>
 
                 <div class="destination-country">
-                    <span>🇮🇳</span> India
+                    <span></span> India
                 </div>
 
             </div>
@@ -315,7 +314,7 @@
                 <div class="destination-name">Paris</div>
 
                 <div class="destination-country">
-                    <span>🇫🇷</span> France
+                    <span></span> France
                 </div>
 
             </div>
@@ -334,7 +333,7 @@
                 <div class="destination-name">Dubai</div>
 
                 <div class="destination-country">
-                    <span>🇦🇪</span> UAE
+                    <span></span> UAE
                 </div>
 
             </div>
@@ -349,9 +348,9 @@
     <section class="reference-cta-section">
 
         <div class="reference-cta-illustration">
-            <span class="cta-person">🧭</span>
-            <span class="cta-plane">✈</span>
-            <span class="cta-location">📍</span>
+            <span class="cta-person"></span>
+            <span class="cta-plane"></span>
+            <span class="cta-location"></span>
         </div>
 
 
@@ -384,7 +383,7 @@
             <div class="footer-brand">
 
                 <a href="index.php" class="reference-logo footer-logo">
-                    <span class="reference-logo-icon">✈</span>
+                    
                     <span>TripNest</span>
                 </a>
 
@@ -427,7 +426,7 @@
                 <div>
                     <a href="#">●</a>
                     <a href="#">◎</a>
-                    <a href="#">♥</a>
+                    <a href="#"></a>
                     <a href="#">▶</a>
                 </div>
 

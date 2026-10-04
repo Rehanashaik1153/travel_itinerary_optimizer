@@ -118,12 +118,7 @@ p {
 
 .dashboard-navbar::before,
 .wander-dashboard-navbar::before {
-    background: linear-gradient(
-        90deg,
-        var(--wx-lagoon) 0%,
-        var(--wx-marigold) 50%,
-        var(--wx-lagoon) 100%
-    );
+    background: var(--wx-lagoon);
     opacity: 0.9;
 }
 
@@ -241,11 +236,7 @@ p {
 }
 
 .trip-form-card::before {
-    background: linear-gradient(
-        90deg,
-        var(--wx-lagoon),
-        var(--wx-marigold)
-    );
+    background: var(--wx-lagoon);
 }
 
 
@@ -383,16 +374,7 @@ textarea:focus {
     color: var(--wx-lagoon-deep);
 }
 
-.itinerary-action-btn.regenerate-action {
-    background: var(--wx-lagoon);
-    border-color: var(--wx-lagoon);
-    color: #fff;
-}
-
-.itinerary-action-btn.regenerate-action:hover {
-    background: var(--wx-lagoon-deep);
-    color: #fff;
-}
+/* Regenerate now uses the same style as the other action buttons. */
 
 
 /* =====================================================
@@ -534,11 +516,7 @@ textarea:focus {
     height: 100%;
     width: 42%;
     border-radius: 999px;
-    background: linear-gradient(
-        90deg,
-        var(--wx-lagoon),
-        var(--wx-marigold)
-    );
+    background: var(--wx-lagoon);
     animation: wx-progress 1.8s ease-in-out infinite;
 }
 

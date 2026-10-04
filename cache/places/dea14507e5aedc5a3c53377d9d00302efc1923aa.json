@@ -1,0 +1,47 @@
+{
+    "success": true,
+    "message": "2 accommodation places found.",
+    "places": [
+        {
+            "name": "tadoba cottages",
+            "category": "Accommodation",
+            "place_type": "Accommodation",
+            "lat": 20.1923101,
+            "lon": 79.3432313,
+            "latitude": 20.1923101,
+            "longitude": 79.3432313,
+            "distance_km": 10.17,
+            "website": "",
+            "phone": "",
+            "opening_hours": "",
+            "fee": "",
+            "charge": "",
+            "address": "maharli gate",
+            "stars": "",
+            "description": "",
+            "osm_type": "node",
+            "osm_id": 4376903101
+        },
+        {
+            "name": "MTDC",
+            "category": "Accommodation",
+            "place_type": "Accommodation",
+            "lat": 20.1887058,
+            "lon": 79.3407722,
+            "latitude": 20.1887058,
+            "longitude": 79.3407722,
+            "distance_km": 10.65,
+            "website": "",
+            "phone": "",
+            "opening_hours": "",
+            "fee": "",
+            "charge": "",
+            "address": "",
+            "stars": "",
+            "description": "",
+            "osm_type": "way",
+            "osm_id": 464791859
+        }
+    ],
+    "accommodation_count": 2
+}

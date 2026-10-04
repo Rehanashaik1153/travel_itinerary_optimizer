@@ -272,7 +272,7 @@ function wanderGetDailyWeather(
             "rain_chance" => $result["daily"]["precipitation_probability_max"][$i] ?? 0,
             "is_rainy" => wanderWeatherCodeIsRainy((int)$code) ||
                 (($result["daily"]["precipitation_probability_max"][$i] ?? 0) >= 55),
-            "icon" => wanderWeatherCodeToIcon((int)$code),
+
             "label" => wanderWeatherCodeToLabel((int)$code),
         ];
     }
@@ -297,18 +297,6 @@ function wanderWeatherCodeIsRainy($code)
         ($code >= 51 && $code <= 67) ||
         ($code >= 80 && $code <= 82) ||
         ($code >= 95 && $code <= 99);
-}
-
-function wanderWeatherCodeToIcon($code)
-{
-    if ($code === 0) return "☀️";
-    if ($code <= 3) return "⛅";
-    if ($code <= 48) return "🌫️";
-    if ($code <= 67) return "🌧️";
-    if ($code <= 77) return "❄️";
-    if ($code <= 82) return "🌦️";
-    if ($code <= 86) return "🌨️";
-    return "⛈️";
 }
 
 function wanderWeatherCodeToLabel($code)

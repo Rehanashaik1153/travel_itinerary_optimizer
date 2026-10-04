@@ -248,9 +248,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         class="logo"
     >
 
-        <span class="logo-icon">
-            ✈
-        </span>
+        
 
 
         <span>
@@ -328,7 +326,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <h1>
 
-            🌍 Choose Your Destination
+            Choose Your Destination
 
         </h1>
 
@@ -375,7 +373,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             <button type="submit">
 
-                🔍 Search
+                Search
 
             </button>
 

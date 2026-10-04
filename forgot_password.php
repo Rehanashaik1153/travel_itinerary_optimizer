@@ -83,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <div style="font-size:42px; margin-bottom:10px;">🔐</div>
+                <div style="font-size:42px; margin-bottom:10px;"></div>
                 <h1>Forgot your password?</h1>
                 <p>Enter your registered email address and we'll help you reset your password.</p>
             </div>

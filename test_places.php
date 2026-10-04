@@ -585,7 +585,7 @@ if ($errorMessage !== '') {
 
 <div class="header">
 
-    <h1>✈️ WanderAI Place Discovery Test</h1>
+    <h1>WanderAI Place Discovery Test</h1>
 
     <p>
         Diagnostic test for places.php
@@ -624,7 +624,7 @@ if ($errorMessage !== '') {
 
     <div class="card">
 
-        <h2>🔎 Test Configuration</h2>
+        <h2>Test Configuration</h2>
 
         <table class="details">
 
@@ -673,7 +673,7 @@ if ($errorMessage !== '') {
 
     <div class="card">
 
-        <h2>🌐 API Status</h2>
+        <h2>API Status</h2>
 
         <div class="grid">
 
@@ -688,11 +688,11 @@ if ($errorMessage !== '') {
 
                     <?php if ($placesApiSuccess): ?>
 
-                        <span class="yes">✓</span>
+                        <span class="yes"></span>
 
                     <?php else: ?>
 
-                        <span class="no">✗</span>
+                        <span class="no"></span>
 
                     <?php endif; ?>
 
@@ -720,11 +720,11 @@ if ($errorMessage !== '') {
 
                     <?php if ($accommodationApiSuccess): ?>
 
-                        <span class="yes">✓</span>
+                        <span class="yes"></span>
 
                     <?php else: ?>
 
-                        <span class="no">✗</span>
+                        <span class="no"></span>
 
                     <?php endif; ?>
 
@@ -752,11 +752,11 @@ if ($errorMessage !== '') {
 
                     <?php if ($broadDestination): ?>
 
-                        <span class="yes">✓</span>
+                        <span class="yes"></span>
 
                     <?php else: ?>
 
-                        <span class="no">✗</span>
+                        <span class="no"></span>
 
                     <?php endif; ?>
 
@@ -797,7 +797,7 @@ if ($errorMessage !== '') {
 
     <div class="card">
 
-        <h2>📊 Discovery Results</h2>
+        <h2>Discovery Results</h2>
 
         <div class="grid">
 
@@ -867,7 +867,7 @@ if ($errorMessage !== '') {
 
     <div class="card">
 
-        <h2>📂 Categories Found</h2>
+        <h2>Categories Found</h2>
 
         <?php if (count($categoryCounts) > 0): ?>
 
@@ -908,7 +908,7 @@ if ($errorMessage !== '') {
     <div class="card">
 
         <h2>
-            🏞️ Tourist Places Returned
+            Tourist Places Returned
             (<?php echo count($normalPlaces); ?>)
         </h2>
 
@@ -1044,7 +1044,7 @@ if ($errorMessage !== '') {
 
             <div class="empty">
 
-                ❌ <strong>No tourist places were returned.</strong>
+                <strong>No tourist places were returned.</strong>
 
                 <br><br>
 
@@ -1063,7 +1063,7 @@ if ($errorMessage !== '') {
     <div class="card">
 
         <h2>
-            🏨 Accommodation Returned
+            Accommodation Returned
             (<?php echo count($accommodationPlaces); ?>)
         </h2>
 
@@ -1199,7 +1199,7 @@ if ($errorMessage !== '') {
 
     <div class="card">
 
-        <h2>🧪 Diagnostic Result</h2>
+        <h2>Diagnostic Result</h2>
 
 
         <?php if ($errorMessage !== ''): ?>
@@ -1251,7 +1251,7 @@ if ($errorMessage !== '') {
 
             <div class="note">
 
-                <strong>✅ Place discovery is working.</strong>
+                <strong>Place discovery is working.</strong>
 
                 <br><br>
 
@@ -1280,7 +1280,7 @@ if ($errorMessage !== '') {
 
     <div class="card">
 
-        <h2>🔧 Raw Diagnostic Data</h2>
+        <h2>Raw Diagnostic Data</h2>
 
         <?php if (is_array($result)): ?>
 
@@ -1331,7 +1331,7 @@ if ($errorMessage !== '') {
 
 <div class="footer">
 
-    ✈️ WanderAI — AI Travel Itinerary Optimizer
+    WanderAI — AI Travel Itinerary Optimizer
 
 </div>
 

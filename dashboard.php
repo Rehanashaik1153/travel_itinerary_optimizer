@@ -105,7 +105,7 @@ $stmt->close();
 
     <a href="dashboard.php" class="wander-dashboard-logo">
 
-        <span class="wander-dashboard-logo-icon">✈</span>
+        
 
         <span>
             Trip<span>Nest</span>
@@ -178,7 +178,7 @@ $stmt->close();
         <div class="wander-welcome-content">
 
             <div class="wander-section-label">
-                <span>✦</span>
+                <span></span>
                 YOUR TRAVEL DASHBOARD
             </div>
 
@@ -191,7 +191,7 @@ $stmt->close();
                     <?php echo $username; ?>
                 </span>
 
-                👋
+               
 
             </h1>
 
@@ -210,7 +210,7 @@ $stmt->close();
                 class="wander-dashboard-primary-btn"
             >
 
-                <span>✨</span>
+                <span></span>
                 Plan a New Trip
                 <strong>→</strong>
 
@@ -227,22 +227,22 @@ $stmt->close();
             <div class="wander-visual-circle"></div>
 
             <div class="wander-visual-plane">
-                ✈️
+               
             </div>
 
             <div class="wander-visual-pin wander-pin-one">
-                📍
+               
             </div>
 
             <div class="wander-visual-pin wander-pin-two">
-                📍
+               
             </div>
 
             <div class="wander-visual-route"></div>
 
             <div class="wander-visual-card">
 
-                <span>✦</span>
+                <span></span>
 
                 <div>
 
@@ -272,9 +272,7 @@ $stmt->close();
 
         <div class="wander-stat-card">
 
-            <div class="wander-stat-icon">
-                🧳
-            </div>
+            
 
             <div>
 
@@ -296,9 +294,7 @@ $stmt->close();
 
         <div class="wander-stat-card">
 
-            <div class="wander-stat-icon">
-                🗺️
-            </div>
+            
 
             <div>
 
@@ -320,9 +316,7 @@ $stmt->close();
 
         <div class="wander-stat-card">
 
-            <div class="wander-stat-icon">
-                💰
-            </div>
+            
 
             <div>
 
@@ -364,7 +358,7 @@ $stmt->close();
             <div>
 
                 <div class="wander-section-label">
-                    <span>✦</span>
+                    <span></span>
                     QUICK ACTIONS
                 </div>
 
@@ -386,9 +380,7 @@ $stmt->close();
                 class="wander-quick-action-card"
             >
 
-                <div class="wander-quick-action-icon">
-                    ✨
-                </div>
+                
 
                 <h3>
                     Plan a New Trip
@@ -414,9 +406,7 @@ $stmt->close();
                 class="wander-quick-action-card"
             >
 
-                <div class="wander-quick-action-icon">
-                    📂
-                </div>
+                
 
                 <h3>
                     My Saved Trips
@@ -442,9 +432,7 @@ $stmt->close();
                 class="wander-quick-action-card"
             >
 
-                <div class="wander-quick-action-icon">
-                    📍
-                </div>
+                
 
                 <h3>
                     Explore Places
@@ -470,9 +458,7 @@ $stmt->close();
                 class="wander-quick-action-card"
             >
 
-                <div class="wander-quick-action-icon">
-                    🤖
-                </div>
+                
 
                 <h3>
                     AI Trip Planner
@@ -510,7 +496,7 @@ $stmt->close();
             <div>
 
                 <div class="wander-section-label">
-                    <span>✦</span>
+                    <span></span>
                     YOUR JOURNEYS
                 </div>
 
@@ -542,9 +528,7 @@ $stmt->close();
 
             <div class="wander-empty-trips">
 
-                <div class="wander-empty-trip-icon">
-                    🧳
-                </div>
+                
 
                 <h3>
                     No trips planned yet
@@ -586,9 +570,7 @@ $stmt->close();
 
                         <div class="wander-trip-card-top">
 
-                            <div class="wander-trip-location-icon">
-                                📍
-                            </div>
+                            
 
                             <span>
                                 Recent Trip
@@ -614,7 +596,7 @@ $stmt->close();
 
                             <p>
 
-                                <span>📅</span>
+                                <span></span>
 
                                 <?php
                                 echo date(
@@ -631,7 +613,7 @@ $stmt->close();
 
                             <p>
 
-                                <span>🗓️</span>
+                                <span></span>
 
                                 <?php
                                 echo (int)
@@ -646,7 +628,7 @@ $stmt->close();
 
                             <p>
 
-                                <span>💰</span>
+                                <span></span>
 
                                 ₹<?php
                                 echo number_format(
@@ -664,7 +646,7 @@ $stmt->close();
 
                         <div class="wander-trip-interests">
 
-                            ❤️
+                           
 
                             <?php
                             echo htmlspecialchars(
@@ -718,7 +700,7 @@ $stmt->close();
 
     <div class="wander-dashboard-footer-logo">
 
-        <span>✈</span>
+        <span></span>
 
         Trip<span>Nest</span>
         

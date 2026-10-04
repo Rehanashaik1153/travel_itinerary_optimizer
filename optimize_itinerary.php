@@ -180,7 +180,7 @@ function getPlaceCost($place)
     /*
      * Check textual information.
      */
-    $text = strtolower(
+    $text = mb_strtolower(
         (string)getValue(
             $place,
             [
@@ -208,7 +208,7 @@ function getPlaceCost($place)
      * Categories which are normally
      * free or very low cost.
      */
-    $category = strtolower(
+    $category = mb_strtolower(
         (string)getValue(
             $place,
             [
@@ -255,7 +255,7 @@ function isCheapPlace($place)
         return true;
     }
 
-    $category = strtolower(
+    $category = mb_strtolower(
         (string)getValue(
             $place,
             [
@@ -319,11 +319,11 @@ function getPlaceCategory($place)
  */
 function samePlace($placeA, $placeB)
 {
-    $nameA = strtolower(
+    $nameA = mb_strtolower(
         trim(getPlaceName($placeA))
     );
 
-    $nameB = strtolower(
+    $nameB = mb_strtolower(
         trim(getPlaceName($placeB))
     );
 
@@ -592,7 +592,7 @@ foreach (
 
 
         $placeName =
-            strtolower(
+            mb_strtolower(
                 trim(
                     getPlaceName(
                         $place
@@ -741,7 +741,7 @@ foreach (
     $selectedAlternative = null;
 
     $paidCategory =
-        strtolower(
+        mb_strtolower(
             getPlaceCategory(
                 $paidPlace
             )
@@ -753,7 +753,7 @@ foreach (
     ) {
 
         $cheapName =
-            strtolower(
+            mb_strtolower(
                 trim(
                     getPlaceName(
                         $cheapPlace
@@ -778,7 +778,7 @@ foreach (
 
 
         $cheapCategory =
-            strtolower(
+            mb_strtolower(
                 getPlaceCategory(
                     $cheapPlace
                 )
@@ -834,7 +834,7 @@ foreach (
         ) {
 
             $cheapName =
-                strtolower(
+                mb_strtolower(
                     trim(
                         getPlaceName(
                             $cheapPlace

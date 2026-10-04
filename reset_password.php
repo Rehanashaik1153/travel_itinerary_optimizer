@@ -71,7 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $validToken) {
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <div style="font-size:42px; margin-bottom:10px;">🔑</div>
+                <div style="font-size:42px; margin-bottom:10px;"></div>
                 <h1>Reset password</h1>
                 <p>Create a new password for your TripNest account.</p>
             </div>

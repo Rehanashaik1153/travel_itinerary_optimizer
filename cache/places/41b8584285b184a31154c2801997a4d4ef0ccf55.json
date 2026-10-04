@@ -1,0 +1,72 @@
+{
+    "success": true,
+    "message": "2 places discovered dynamically.",
+    "places": [
+        {
+            "name": "Charpa Falls",
+            "category": "Nature / Scenic",
+            "place_type": "Nature / Scenic",
+            "lat": 10.30455,
+            "lon": 76.57981,
+            "latitude": 10.30455,
+            "longitude": 76.57981,
+            "distance_km": 9.16,
+            "website": "https://en.wikipedia.org/?curid=36791150",
+            "phone": "",
+            "opening_hours": "",
+            "fee": "",
+            "charge": "",
+            "cuisine": "",
+            "address": "",
+            "stars": "",
+            "description": "Waterfall in Kerala, India",
+            "osm_type": "",
+            "osm_id": "",
+            "osm_url": ""
+        },
+        {
+            "name": "Athirappilly Falls",
+            "category": "Nature / Scenic",
+            "place_type": "Nature / Scenic",
+            "lat": 10.28472222,
+            "lon": 76.56861111,
+            "latitude": 10.28472222,
+            "longitude": 76.56861111,
+            "distance_km": 9.78,
+            "website": "https://en.wikipedia.org/?curid=6333592",
+            "phone": "",
+            "opening_hours": "",
+            "fee": "",
+            "charge": "",
+            "cuisine": "",
+            "address": "",
+            "stars": "",
+            "description": "Waterfall in Athirapilly, India",
+            "osm_type": "",
+            "osm_id": "",
+            "osm_url": ""
+        }
+    ],
+    "accommodation_count": 0,
+    "places_api_success": true,
+    "accommodation_api_success": true,
+    "search_areas_used": 1,
+    "destination": "Kerala, India",
+    "radius": 10000,
+    "category_counts": {
+        "Nature / Scenic": 2
+    },
+    "data_source": "wikipedia",
+    "successful_server": "en.wikipedia.org",
+    "failed_servers": [
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter"
+    ],
+    "raw_element_count": 2
+}

@@ -86,7 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <a href="index.php" class="wander-auth-logo">
 
-            <span class="wander-auth-logo-icon">✈</span>
+            
 
             <span class="wander-auth-logo-text">
                 Trip<span>Nest</span>
@@ -129,9 +129,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             <div class="wander-auth-header">
 
-                <div class="wander-auth-icon">
-                    ✈
-                </div>
+                
 
                 <h1>Welcome back</h1>
 

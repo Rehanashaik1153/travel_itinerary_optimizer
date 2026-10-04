@@ -39,7 +39,7 @@ function wanderRecommendGetPlaceValue($place, $keys, $default = "")
 
 function wanderRecommendEstimatedCost($place)
 {
-    $text = strtolower(
+    $text = mb_strtolower(
         (string)wanderRecommendGetPlaceValue(
             $place,
             ["fee", "price", "cost", "entry_fee", "description"],
@@ -54,7 +54,7 @@ function wanderRecommendEstimatedCost($place)
         return 0;
     }
 
-    $category = strtolower(
+    $category = mb_strtolower(
         (string)wanderRecommendGetPlaceValue(
             $place,
             ["category", "type", "place_type"],
@@ -107,7 +107,7 @@ function wanderRecommendNormalizeText($text)
         return $normalizeCache[$cacheKey];
     }
 
-    $text = strtolower(trim((string)$text));
+    $text = mb_strtolower(trim((string)$text));
 
     $text = preg_replace(
         '/[^a-z0-9\s]/i',
@@ -148,7 +148,7 @@ function wanderRecommendPrepareInterests($interests)
     } else {
         $interestList = preg_split(
             '/[,|]+/',
-            strtolower((string)$interests)
+            mb_strtolower((string)$interests)
         );
     }
 
@@ -625,6 +625,42 @@ function wanderRecommendInterestMatches(
         }
     }
 
+    /*
+       Text-word fallbacks. The classifier sometimes labels a
+       real park / fort / market as a generic "tourist" place, so
+       the interest would not match by type. Also look at the
+       words in the place name and category.
+    */
+    if ($matches === 0) {
+
+        $interestWords = [
+            'nature'        => '/park|garden|lake|forest|hill|valley|river|island|reserve|sanctuary|waterfall|falls|beach|viewpoint|peak|mountain|dam|backwater|botanical|wildlife|cave/',
+            'scenic'        => '/park|garden|lake|forest|hill|valley|river|island|waterfall|falls|beach|viewpoint|peak|mountain|dam|backwater/',
+            'landscape'     => '/park|lake|forest|hill|valley|river|waterfall|falls|viewpoint|peak|mountain/',
+            'culture'       => '/fort|palace|museum|monument|memorial|heritage|temple|church|mosque|cathedral|ruins|gallery|tomb|archaeolog|historic|old town|stupa|monastery|mandir|gurdwara/',
+            'history'       => '/fort|palace|museum|monument|memorial|heritage|ruins|tomb|archaeolog|historic|old town|stupa|monastery/',
+            'heritage'      => '/fort|palace|museum|monument|memorial|heritage|ruins|tomb|archaeolog|historic|old town/',
+            'shopping'      => '/market|mall|bazaar|bazar|shopping|mart|plaza|souk|emporium/',
+            'entertainment' => '/theme park|amusement|water park|cinema|theatre|theater|zoo|aquarium|stadium|arcade|bowling|park|show/',
+        ];
+
+        foreach ($interests as $interest) {
+
+            $interest = wanderRecommendNormalizeText($interest);
+
+            foreach ($interestWords as $key => $pattern) {
+
+                if (
+                    strpos($interest, $key) !== false &&
+                    preg_match($pattern, $combined)
+                ) {
+                    $matches++;
+                    break 2;
+                }
+            }
+        }
+    }
+
     return $matches;
 }
 
@@ -964,7 +1000,7 @@ function wanderRecommendIsDuplicate(
         );
 
     $candidateType =
-        strtolower(
+        mb_strtolower(
             trim(
                 $candidate['place_type'] ??
                 $candidate['category'] ??
@@ -1079,7 +1115,7 @@ function wanderRecommendIsDuplicate(
             strpos($candidateName, 'falls') !== false;
 
         $selectedType =
-            strtolower(
+            mb_strtolower(
                 trim(
                     $selected['place_type'] ??
                     $selected['category'] ??
@@ -1463,7 +1499,7 @@ function recommendPlaces(
 
     $maximumPlaces = min(
         count($allPlaces),
-        $numberOfDays * 4
+        $numberOfDays * 5
     );
 
     if ($maximumPlaces <= 0) {

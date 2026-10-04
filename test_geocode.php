@@ -133,7 +133,7 @@ if (
 
 <div class="container">
 
-    <h1>🌍 Global Destination Search</h1>
+    <h1>Global Destination Search</h1>
 
     <p>Enter any destination in the world</p>
 
@@ -234,7 +234,7 @@ if (
 
         <div class="success">
 
-            <h2>✅ Destination Selected</h2>
+            <h2>Destination Selected</h2>
 
             <p>
                 <strong>Place:</strong><br>

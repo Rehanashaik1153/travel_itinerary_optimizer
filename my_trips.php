@@ -108,9 +108,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 
     <a href="dashboard.php" class="logo">
 
-        <span class="logo-icon">
-            ✈
-        </span>
+        
 
         <span>
             Trip<span>Nest</span>
@@ -184,7 +182,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 
 
             <h1>
-                My <span>Trips</span> ✈️
+                My <span>Trips</span>
             </h1>
 
 
@@ -212,9 +210,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 
         <section class="empty-trips">
 
-            <div class="empty-trips-icon">
-                🧳
-            </div>
+            
 
 
             <h2>
@@ -222,18 +218,16 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
             </h2>
 
 
-            <p>
-                Start planning your first journey and
-                TripNest will create a personalized
-                travel itinerary for you.
-            </p>
+            <h5>
+                
+    </h5>
 
 
             <a
                 href="plan_trip.php"
                 class="dashboard-secondary-btn"
             >
-                ✈️ Plan My First Trip
+                Plan My First Trip
             </a>
 
         </section>
@@ -255,7 +249,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 
                         <h2>
 
-                            📍
+                           
 
                             <?php
                             echo htmlspecialchars(
@@ -283,7 +277,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                         <div class="trip-info-item">
 
                             <span>
-                                📅 Start Date
+                                Start Date
                             </span>
 
                             <strong>
@@ -306,7 +300,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                         <div class="trip-info-item">
 
                             <span>
-                                🗓️ Duration
+                                Duration
                             </span>
 
                             <strong>
@@ -327,7 +321,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                         <div class="trip-info-item">
 
                             <span>
-                                💰 Budget
+                                Budget
                             </span>
 
                             <strong>
@@ -348,7 +342,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                         <div class="trip-info-item">
 
                             <span>
-                                👥 Travelers
+                                Travelers
                             </span>
 
                             <strong>
@@ -367,7 +361,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                         <div class="trip-info-item trip-interests">
 
                             <span>
-                                ❤️ Interests
+                                Interests
                             </span>
 
                             <strong>
@@ -397,7 +391,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                             href="itinerary.php?trip_id=<?php echo $trip["trip_id"]; ?>"
                             class="view-itinerary-btn"
                         >
-                            🤖 View AI Itinerary
+                            View AI Itinerary
                         </a>
 
 
@@ -406,7 +400,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                             class="clone-trip-btn"
                             onclick="return confirm('Clone this trip as a new draft?');"
                         >
-                            📋 Clone
+                            Clone
                         </a>
 
 
@@ -415,7 +409,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
                             class="delete-trip-btn"
                             onclick="return confirm('Are you sure you want to delete this trip?');"
                         >
-                            🗑 Delete
+                            Delete
                         </a>
 
                     </div>
@@ -439,7 +433,7 @@ foreach ($tripsByCreationOrder as $tripForNumbering) {
 <footer class="dashboard-footer">
 
     <div class="footer-logo">
-        ✈ Trip<span>Nest</span>
+        Trip<span>Nest</span>
     </div>
 
 

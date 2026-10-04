@@ -120,7 +120,7 @@ textarea {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #14796f 0%, #e08a1e 100%);
+    background: #14796f;
 }
 
 .logo {
@@ -313,7 +313,7 @@ textarea {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #14796f, #e08a1e);
+    background: #14796f;
 }
 
 .form-section-title {
@@ -646,47 +646,29 @@ textarea {
     transition: 0.2s;
 }
 
-a.edit-trip-action.itinerary-action-btn {
-    background: #f1f5f9;
-    color: #2b4a5f;
-}
-
-a.regenerate-action.itinerary-action-btn {
-    background: #14796f;
-    color: #ffffff;
-}
-
-a.new-trip-action.itinerary-action-btn {
-    background: #0f766e;
-    color: #ffffff;
-}
-
-a.budget-trip-action.itinerary-action-btn {
-    background: #f59e0b;
-    color: #ffffff;
-}
-
-a.print-trip-action.itinerary-action-btn {
-    background: #eef2ff;
-    color: #4338ca;
-    border: 1px solid #c7d2fe;
-}
-
-a.calendar-trip-action.itinerary-action-btn {
-    background: #ecfdf5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
-}
-
+/* All itinerary action buttons share one look
+   (Edit Trip, Trip Budget, Regenerate, Plan Another Trip, ...). */
+a.edit-trip-action.itinerary-action-btn,
+a.regenerate-action.itinerary-action-btn,
+a.new-trip-action.itinerary-action-btn,
+a.budget-trip-action.itinerary-action-btn,
+a.print-trip-action.itinerary-action-btn,
+a.calendar-trip-action.itinerary-action-btn,
 a.clone-trip-action.itinerary-action-btn {
-    background: #fdf4ff;
-    color: #a21caf;
-    border: 1px solid #f5d0fe;
+    background: #f0f7f6;
+    color: #14796f;
+    border: 1px solid #c7ded9;
 }
 
 .itinerary-action-btn:hover {
     transform: translateY(-1px);
     opacity: 0.92;
+}
+
+a.itinerary-action-btn:hover {
+    background: #e2f1ee;
+    color: #0f5f57;
+    border-color: #14796f;
 }
 
 
@@ -719,8 +701,11 @@ a.clone-trip-action.itinerary-action-btn {
     color: #1d4ed8;
 }
 
-.day-weather-icon {
-    font-size: 20px;
+.day-weather-label {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .day-weather-rain-note {
@@ -986,7 +971,7 @@ a.clone-trip-action.itinerary-action-btn {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #14796f, #e08a1e);
+    background: #14796f;
 }
 
 .day-title {
@@ -1133,7 +1118,7 @@ a.clone-trip-action.itinerary-action-btn {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #14796f, #e08a1e);
+    background: #14796f;
 }
 
 .trip-card:hover {
@@ -1210,9 +1195,9 @@ a.clone-trip-action.itinerary-action-btn {
 }
 
 .clone-trip-btn {
-    background: #fdf4ff;
-    color: #a21caf;
-    border: 1px solid #f5d0fe;
+    background: #f0f7f6;
+    color: #14796f;
+    border: 1px solid #c7ded9;
 }
 
 .delete-trip-btn {
@@ -2040,8 +2025,7 @@ a.clone-trip-action.itinerary-action-btn {
         linear-gradient(
             135deg,
             #0e5c54,
-            #14796f,
-            #7c3aed
+            #14796f
         );
 
     border-radius: 22px;
@@ -2388,7 +2372,7 @@ a.clone-trip-action.itinerary-action-btn {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #14796f 0%, #e08a1e 100%);
+    background: #14796f;
 }
 
 .wander-dashboard-logo {
@@ -3232,7 +3216,7 @@ body.wander-auth-page {
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: linear-gradient(135deg,#0e5c54,#0ea5e9);
+    background: #14796f;
     color: #fff;
     font-size: 20px;
     box-shadow: 0 8px 20px rgba(37,99,235,.22);
@@ -3333,7 +3317,7 @@ body.wander-auth-page {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg,#0e5c54,#0ea5e9);
+    background: #14796f;
     color: #fff;
     font-size: 26px;
     box-shadow: 0 10px 25px rgba(37,99,235,.25);
@@ -3432,7 +3416,7 @@ body.wander-auth-page {
     padding: 12px 17px;
     border: none;
     border-radius: 11px;
-    background: linear-gradient(135deg,#0e5c54,#0ea5e9);
+    background: #14796f;
     color: #fff;
     display: flex;
     align-items: center;
@@ -3641,7 +3625,7 @@ body.wander-auth-page {
     height: 100%;
     width: 40%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #14796f, #e08a1e);
+    background: #14796f;
     animation: wanderProgress 1.6s ease-in-out infinite;
 }
 

@@ -16,6 +16,7 @@ require_once "places.php";
 require_once "recommend_places.php";
 require_once "generate_itinerary.php";
 require_once "itinerary_helpers.php";
+require_once "broad_destination.php";
 
 
 $username = htmlspecialchars(
@@ -360,14 +361,14 @@ function isAccommodationPlace(
     }
 
     $name =
-        strtolower(
+        mb_strtolower(
             trim(
                 $place["name"] ?? ""
             )
         );
 
     $category =
-        strtolower(
+        mb_strtolower(
             trim(
                 $place["category"] ?? ""
             )
@@ -430,14 +431,14 @@ function getDisplayCategory(
     }
 
     $name =
-        strtolower(
+        mb_strtolower(
             trim(
                 $place["name"] ?? ""
             )
         );
 
     $category =
-        strtolower(
+        mb_strtolower(
             trim(
                 $place["category"] ?? ""
             )
@@ -821,9 +822,65 @@ function getDisplayCategory(
    DETERMINE WHETHER GENERATION IS REQUIRED
    ===================================================== */
 
+/*
+ * Old versions could save a valid-looking itinerary containing only
+ * one attraction for a multi-day trip. Treat that as incomplete so
+ * the corrected discovery engine gets a chance to rebuild it.
+ */
+$savedActivityCount = 0;
+
+foreach ($savedItinerary as $savedDay) {
+    if (!is_array($savedDay)) {
+        continue;
+    }
+
+    foreach (($savedDay["places"] ?? []) as $savedPlace) {
+        if (
+            is_array($savedPlace) &&
+            empty($savedPlace["is_break"])
+        ) {
+            $savedActivityCount++;
+        }
+    }
+}
+
+$savedDaysWithActivities = 0;
+
+foreach ($savedItinerary as $savedDay) {
+    $dayHasActivity = false;
+
+    foreach (($savedDay["places"] ?? []) as $savedPlace) {
+        if (
+            is_array($savedPlace) &&
+            empty($savedPlace["is_break"])
+        ) {
+            $dayHasActivity = true;
+            break;
+        }
+    }
+
+    if ($dayHasActivity) {
+        $savedDaysWithActivities++;
+    }
+}
+
+$needsRepair =
+    !empty($savedItinerary) &&
+    (
+        $savedActivityCount < min(
+            $number_of_days * 2,
+            4
+        ) ||
+        (
+            $number_of_days > 1 &&
+            $savedDaysWithActivities < 2
+        )
+    );
+
 $needsGeneration =
     $regenerate ||
-    empty($savedItinerary);
+    empty($savedItinerary) ||
+    $needsRepair;
 
 
 /* =====================================================
@@ -888,7 +945,7 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
 
             <div class="generating-spinner"></div>
 
-            <h1>🤖 TripNest is building your itinerary...</h1>
+            <h1>TripNest is building your itinerary...</h1>
 
             <p>
                 Discovering places, checking opening hours, and
@@ -923,21 +980,33 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
                 substepEl.textContent = substeps[i];
             }, 3000);
 
+            var finalUrl =
+                "itinerary.php?trip_id=<?php echo (int)$trip_id; ?>&generated=1";
+
+            var goFinal = function () {
+                clearInterval(stepTimer);
+                window.location.href = finalUrl;
+            };
+
+            /* Safety net: never sit on this screen forever. */
+            var giveUp = setTimeout(function () {
+                substepEl.textContent =
+                    "Taking longer than expected - opening your itinerary...";
+                setTimeout(goFinal, 1500);
+            }, 45000);
+
             fetch(window.location.href.split("#")[0] +
-                (window.location.search ? "&" : "?") + "ajax=1")
+                (window.location.search ? "&" : "?") + "ajax=1",
+                { credentials: "same-origin" })
                 .then(function () {
-                    clearInterval(stepTimer);
-                    window.location.href =
-                        "itinerary.php?trip_id=<?php echo (int)$trip_id; ?>&generated=1";
+                    clearTimeout(giveUp);
+                    goFinal();
                 })
                 .catch(function () {
-                    clearInterval(stepTimer);
+                    clearTimeout(giveUp);
                     substepEl.textContent =
-                        "Taking longer than expected - reloading...";
-                    setTimeout(function () {
-                        window.location.href =
-                            "itinerary.php?trip_id=<?php echo (int)$trip_id; ?>&generated=1";
-                    }, 2000);
+                        "Almost there - opening your itinerary...";
+                    setTimeout(goFinal, 1500);
                 });
         })();
         </script>
@@ -954,6 +1023,15 @@ if ($needsGeneration && !$isAjaxGenerationRequest) {
    ===================================================== */
 
 if ($needsGeneration) {
+
+    /*
+     * Generation talks to external map servers. Give it room to finish
+     * and keep going (and save) even if the visitor closes the tab.
+     */
+    @set_time_limit(90);
+    ignore_user_abort(true);
+    $generationStart = microtime(true);
+
 
 
     /* =================================================
@@ -1001,9 +1079,72 @@ if ($needsGeneration) {
             getNearbyPlaces(
                 $latitude,
                 $longitude,
-                10000,
+                60000,
                 $destinationRaw
             );
+
+        /* =================================================
+           REGION MODE (state / country / large area)
+
+           "Tamil Nadu" is one map point in the middle of a big
+           state, so a point search finds almost nothing. When
+           results are sparse, plan the trip around the region's
+           top attractions instead. Normal destinations are not
+           affected: they have plenty of places and skip this.
+           ================================================= */
+        $broadPlan = null;
+
+        $wanderUsableCount = 0;
+
+        if (
+            is_array($placesResult) &&
+            !empty($placesResult["places"]) &&
+            is_array($placesResult["places"])
+        ) {
+            foreach ($placesResult["places"] as $wanderCountPlace) {
+                if (!isAccommodationPlace($wanderCountPlace)) {
+                    $wanderUsableCount++;
+                }
+            }
+        }
+
+        if (function_exists("tripnestPlanBroadDestination")) {
+
+            /*
+             * The planner decides by destination SIZE: states and
+             * countries always use region mode; mid-size areas only
+             * when the point search was sparse; cities never.
+             */
+            $broadPlan = tripnestPlanBroadDestination(
+                $destinationRaw,
+                $latitude,
+                $longitude,
+                $number_of_days,
+                $transportRaw,
+                (string)($trip["interests"] ?? ""),
+                $trip["budget"] ?? 0,
+                $trip["travelers"] ?? 1,
+                ($wanderUsableCount < ($number_of_days * 3))
+            );
+
+            /* Why region mode did not help (shown only if it failed). */
+            if (
+                $broadPlan === null &&
+                !empty($GLOBALS["TRIPNEST_BROAD_DEBUG"])
+            ) {
+                $placesMessage =
+                    "Region search note: " . $GLOBALS["TRIPNEST_BROAD_DEBUG"] . ".";
+            }
+
+            if ($broadPlan !== null) {
+                $placesResult = [
+                    "success" => true,
+                    "places" => $broadPlan["all_places"],
+                    "data_source" => "broad",
+                    "message" => ""
+                ];
+            }
+        }
 
 
         /* =================================================
@@ -1039,6 +1180,27 @@ if ($needsGeneration) {
                 count(
                     $allPlaces
                 );
+
+            /*
+             * Be transparent when the plan is not built from live,
+             * named places.
+             */
+            $placesDataSource =
+                $placesResult["data_source"] ?? "";
+
+            if ($placesDataSource === "generic") {
+
+                $placesMessage =
+                    "Live map servers could not be reached right now, so this is a " .
+                    "general plan of suggested activities for " . $destinationRaw .
+                    ". Click Regenerate in a minute to replace it with real, named places.";
+
+            } elseif ($placesDataSource === "stale_cache") {
+
+                $placesMessage =
+                    $placesResult["message"] ??
+                    "Previously saved place data is being used.";
+            }
 
 
             /* ---------------------------------------------
@@ -1116,7 +1278,7 @@ if ($needsGeneration) {
                             continue;
                         }
 
-                        $fallbackName = strtolower(trim(
+                        $fallbackName = mb_strtolower(trim(
                             (string)($fallbackPlace["name"] ?? "")
                         ));
 
@@ -1208,22 +1370,45 @@ if ($needsGeneration) {
                dedicated, much wider lodging-only search.
                --------------------------------------------- */
 
-            if ($selectedAccommodation === null) {
+            if (
+                $selectedAccommodation === null &&
+                $broadPlan === null &&
+                ($placesResult["data_source"] ?? "") !== "generic"
+            ) {
 
-                $wanderWideResult =
-                    getNearbyAccommodation(
-                        $latitude,
-                        $longitude,
-                        60000
-                    );
+                /*
+                 * Search accommodation progressively. A single 60 km
+                 * Overpass hotel query can be too large, so start close
+                 * and widen only when necessary.
+                 */
+                $accommodationRadii = [
+                    10000,
+                    30000,
+                    60000
+                ];
 
-                $wanderWideAccommodation =
-                    $wanderWideResult["places"] ?? [];
+                foreach ($accommodationRadii as $accommodationRadius) {
 
-                $wanderWideAccommodationDebug =
-                    $wanderWideResult["debug"] ?? null;
+                    if ($selectedAccommodation !== null) {
+                        break;
+                    }
 
-                if (!empty($wanderWideAccommodation)) {
+                    $wanderWideResult =
+                        getNearbyAccommodation(
+                            $latitude,
+                            $longitude,
+                            $accommodationRadius
+                        );
+
+                    $wanderWideAccommodation =
+                        $wanderWideResult["places"] ?? [];
+
+                    $wanderWideAccommodationDebug =
+                        $wanderWideResult["debug"] ?? null;
+
+                    if (empty($wanderWideAccommodation)) {
+                        continue;
+                    }
 
                     usort(
                         $wanderWideAccommodation,
@@ -1285,7 +1470,7 @@ if ($needsGeneration) {
             ) {
 
                 $currentName =
-                    strtolower(
+                    mb_strtolower(
                         trim(
                             $place[
                                 "name"
@@ -1320,16 +1505,115 @@ if ($needsGeneration) {
             $itineraryPlaces =
                 $uniquePlaces;
 
+            /* =================================================
+               TOP-UP: never run out of places
+
+               The recommendation step keeps only the best matches.
+               If that is fewer than the trip needs, add the other
+               nearby places we found (nearest first, attractions
+               before restaurants) even if they do not match the
+               interests, so no day is left empty.
+               ================================================= */
+            if ($broadPlan === null) {
+
+                $topUpTarget = $number_of_days * 4;
+
+                if (count($itineraryPlaces) < $topUpTarget) {
+
+                    $haveNames = [];
+
+                    foreach ($itineraryPlaces as $havePlace) {
+                        $haveNames[
+                            mb_strtolower(trim((string)($havePlace["name"] ?? "")))
+                        ] = true;
+                    }
+
+                    $extraSights = [];
+                    $extraFood = [];
+
+                    foreach ($allPlaces as $extraPlace) {
+
+                        if (
+                            !is_array($extraPlace) ||
+                            isAccommodationPlace($extraPlace)
+                        ) {
+                            continue;
+                        }
+
+                        $extraKey = mb_strtolower(
+                            trim((string)($extraPlace["name"] ?? ""))
+                        );
+
+                        if (
+                            $extraKey === "" ||
+                            isset($haveNames[$extraKey]) ||
+                            !isset($extraPlace["latitude"]) ||
+                            !isset($extraPlace["longitude"])
+                        ) {
+                            continue;
+                        }
+
+                        if (!isset($extraPlace["recommendation_score"])) {
+                            $extraPlace["recommendation_score"] = 20;
+                        }
+
+                        if (empty($extraPlace["recommendation_reason"])) {
+                            $extraPlace["recommendation_reason"] =
+                                "Nearby place added so every day of your trip has activities.";
+                        }
+
+                        if (
+                            strpos(
+                                mb_strtolower((string)($extraPlace["category"] ?? "")),
+                                "food"
+                            ) !== false
+                        ) {
+                            $extraFood[] = $extraPlace;
+                        } else {
+                            $extraSights[] = $extraPlace;
+                        }
+                    }
+
+                    $byDistance = function ($a, $b) {
+                        return ((float)($a["distance_km"] ?? 0))
+                            <=> ((float)($b["distance_km"] ?? 0));
+                    };
+
+                    usort($extraSights, $byDistance);
+                    usort($extraFood, $byDistance);
+
+                    foreach (array_merge($extraSights, $extraFood) as $extraPlace) {
+
+                        if (count($itineraryPlaces) >= $topUpTarget) {
+                            break;
+                        }
+
+                        $itineraryPlaces[] = $extraPlace;
+                    }
+                }
+            }
+
 
             /* =================================================
                GENERATE ITINERARY
                ================================================= */
 
-            if (
-                !empty(
-                    $itineraryPlaces
-                )
-            ) {
+            if ($broadPlan !== null) {
+
+                /*
+                 * REGION MODE: the plan was already built area by area.
+                 */
+                $itineraryPlaces = $broadPlan["places"];
+
+                $selectedAccommodation = $broadPlan["accommodation"];
+
+                $placesDiscoveredCount = $broadPlan["discovered"];
+
+                $generatedItinerary = $broadPlan["itinerary"];
+
+                $placesMessage = $broadPlan["message"];
+
+            } elseif (!empty($itineraryPlaces)) {
 
                 $accommodationLatitude =
                     null;
@@ -1354,6 +1638,31 @@ if ($needsGeneration) {
                 }
 
 
+                /*
+                 * Restaurants / cafes found nearby are kept aside as
+                 * lunch options (13:00 - 14:00) so every day can show a
+                 * real, named place - not just a generic "Lunch Break".
+                 */
+                $lunchFoodPlaces = [];
+
+                foreach ($allPlaces as $foodCandidate) {
+
+                    if (!is_array($foodCandidate)) {
+                        continue;
+                    }
+
+                    $foodCategory = mb_strtolower(
+                        (string)($foodCandidate["category"] ?? "")
+                    );
+
+                    if (
+                        strpos($foodCategory, "food") !== false &&
+                        !isAccommodationPlace($foodCandidate)
+                    ) {
+                        $lunchFoodPlaces[] = $foodCandidate;
+                    }
+                }
+
                 $generatedItinerary =
                     generateItinerary(
 
@@ -1369,7 +1678,8 @@ if ($needsGeneration) {
 
                         $accommodationLatitude,
 
-                        $accommodationLongitude
+                        $accommodationLongitude,
+                        $lunchFoodPlaces
                     );
             }
 
@@ -1642,7 +1952,7 @@ if (
 
 
             $placeName =
-                strtolower(
+                mb_strtolower(
                     trim(
                         $place[
                             "name"
@@ -1752,9 +2062,7 @@ $page_title =
         class="logo"
     >
 
-        <span class="logo-icon">
-            ✈
-        </span>
+        
 
         <span>
             Trip<span>Nest</span>
@@ -1832,13 +2140,13 @@ $page_title =
 <?php if (isset($_GET["budget_applied"]) && $_GET["budget_applied"] === "1"): ?>
 
 <section class="budget-alert budget-alert-success">
-    ✅ Your itinerary was updated with budget-friendly alternatives.
+    Your itinerary was updated with budget-friendly alternatives.
 </section>
 
 <?php elseif (!empty($generatedItinerary)): ?>
 
 <section class="budget-alert budget-alert-nudge">
-    💰 Not sure this fits your budget?
+    Not sure this fits your budget?
     <a href="budget.php?trip_id=<?php echo $trip_id; ?>">
         Check your estimated cost
     </a>
@@ -1870,7 +2178,7 @@ $page_title =
                 ?>
             </span>
 
-            ✈️
+           
 
         </h1>
 
@@ -1889,13 +2197,13 @@ $page_title =
             href="plan_trip.php?trip_id=<?php echo $trip_id; ?>"
             class="itinerary-action-btn edit-trip-action"
         >
-            ✏️ Edit Trip
+            Edit Trip
         </a>
         <a
             href="budget.php?trip_id=<?php echo $trip_id; ?>"
             class="itinerary-action-btn budget-trip-action"
 >
-            💰 Trip Budget
+            Trip Budget
         </a>
 
 
@@ -1904,7 +2212,7 @@ $page_title =
             class="itinerary-action-btn regenerate-action"
             onclick="return confirm('Regenerate your itinerary with fresh recommendations?');"
         >
-            🔄 Regenerate
+            Regenerate
         </a>
 
 
@@ -1912,7 +2220,7 @@ $page_title =
             href="plan_trip.php"
             class="itinerary-action-btn new-trip-action"
         >
-            ✈️ Plan Another Trip
+            Plan Another Trip
         </a>
 
 
@@ -1921,14 +2229,14 @@ $page_title =
             class="itinerary-action-btn print-trip-action"
             target="_blank"
         >
-            🖨️ Print / Save PDF
+            Print / Save PDF
         </a>
 
         <a
             href="export_ics.php?trip_id=<?php echo $trip_id; ?>"
             class="itinerary-action-btn calendar-trip-action"
         >
-            📅 Add to Calendar
+            Add to Calendar
         </a>
 
         <a
@@ -1936,7 +2244,7 @@ $page_title =
             class="itinerary-action-btn clone-trip-action"
             onclick="return confirm('Clone this trip as a new draft you can reuse?');"
         >
-            📋 Clone Trip
+            Clone Trip
         </a>
 
     </div>
@@ -1952,9 +2260,7 @@ $page_title =
 
     <div class="trip-summary-card">
 
-        <div class="summary-icon">
-            📍
-        </div>
+        
 
         <div>
 
@@ -1975,9 +2281,7 @@ $page_title =
 
     <div class="trip-summary-card">
 
-        <div class="summary-icon">
-            📅
-        </div>
+        
 
         <div>
 
@@ -2000,9 +2304,7 @@ $page_title =
 
     <div class="trip-summary-card">
 
-        <div class="summary-icon">
-            🗓️
-        </div>
+        
 
         <div>
 
@@ -2024,9 +2326,7 @@ $page_title =
 
     <div class="trip-summary-card">
 
-        <div class="summary-icon">
-            💰
-        </div>
+        
 
         <div>
 
@@ -2047,9 +2347,7 @@ $page_title =
 
     <div class="trip-summary-card">
 
-        <div class="summary-icon">
-            👥
-        </div>
+        
 
         <div>
 
@@ -2085,7 +2383,7 @@ $page_title =
         <div>
 
             <span>
-                ❤️ Interests
+                Interests
             </span>
 
             <strong>
@@ -2103,7 +2401,7 @@ $page_title =
         <div>
 
             <span>
-                🚗 Preferred Transport
+                Preferred Transport
             </span>
 
             <strong>
@@ -2128,9 +2426,7 @@ $page_title =
 
 <section class="ai-itinerary-card">
 
-    <div class="ai-itinerary-icon">
-        🤖
-    </div>
+    
 
     <div>
 
@@ -2197,9 +2493,7 @@ $page_title =
 
         <div class="accommodation-card">
 
-            <div class="accommodation-icon">
-                🏨
-            </div>
+            
 
             <div>
 
@@ -2238,7 +2532,7 @@ $page_title =
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    🗺️ Open Accommodation in Google Maps
+                    Open Accommodation in Google Maps
                 </a>
 
             </div>
@@ -2249,9 +2543,7 @@ $page_title =
 
         <div class="ai-itinerary-card">
 
-            <div class="ai-itinerary-icon">
-                🏨
-            </div>
+            
 
             <div>
 
@@ -2348,9 +2640,7 @@ $page_title =
 
         <div class="ai-itinerary-card">
 
-            <div class="ai-itinerary-icon">
-                🔍
-            </div>
+            
 
             <div>
 
@@ -2371,7 +2661,7 @@ $page_title =
 
         <p class="places-count">
 
-            🌍
+           
 
             <?php
             echo $placesDiscoveredCount;
@@ -2381,7 +2671,7 @@ $page_title =
 
             <span>•</span>
 
-            ⭐
+           
 
             <?php
             echo count(
@@ -2426,7 +2716,7 @@ $page_title =
 
                     <h3>
 
-                        📍
+                       
 
                         <?php
                         echo htmlspecialchars(
@@ -2453,7 +2743,7 @@ $page_title =
 
                     <p>
 
-                        ⭐ Match Score:
+                        Match Score:
 
                         <strong>
 
@@ -2480,7 +2770,7 @@ $page_title =
 
                         <p class="recommendation-reason">
 
-                            🤖
+                           
 
                             <?php
                             echo htmlspecialchars(
@@ -2505,7 +2795,7 @@ $page_title =
 
                         <p>
 
-                            🕐
+                           
 
                             <?php
                             echo htmlspecialchars(
@@ -2680,7 +2970,7 @@ if (!empty($generatedItinerary)) {
         });
 
         var label = m.type === "accommodation"
-            ? ("🏨 " + m.name)
+            ? m.name
             : ("Day " + m.day + " — " + m.name);
 
         L.marker([m.latitude, m.longitude], { icon: icon })
@@ -2725,7 +3015,7 @@ if (!empty($generatedItinerary)) {
     ): ?>
 
         <div class="budget-alert budget-alert-nudge">
-            📍 "<?php echo $destination; ?>" is a large area, so only
+            "<?php echo $destination; ?>" is a large area, so only
             <?php echo count($itineraryPlaces); ?> place(s) were found
             within a single search radius — that's why some days show
             fewer stops. For a fuller day-by-day plan, try
@@ -2744,9 +3034,7 @@ if (!empty($generatedItinerary)) {
 
         <div class="ai-itinerary-card">
 
-            <div class="ai-itinerary-icon">
-                🗓️
-            </div>
+            
 
             <div>
 
@@ -2913,12 +3201,12 @@ if ($wanderWDebug === null):
                             class="day-weather-badge<?php echo $wanderCurrentDayWeather['is_rainy'] ? ' day-weather-rainy' : ''; ?>"
                             title="<?php echo htmlspecialchars($wanderCurrentDayWeather['label']); ?>"
                         >
-                            <span class="day-weather-icon"><?php echo $wanderCurrentDayWeather['icon']; ?></span>
+                            <span class="day-weather-label"><?php echo htmlspecialchars($wanderCurrentDayWeather['label']); ?></span>
                             <span class="day-weather-temps">
                                 <?php echo round($wanderCurrentDayWeather['max_c']); ?>°/<?php echo round($wanderCurrentDayWeather['min_c']); ?>°C
                             </span>
                             <?php if ($wanderCurrentDayWeather['is_rainy']): ?>
-                                <span class="day-weather-rain-note">☔ Rain likely - indoor spots favored</span>
+                                <span class="day-weather-rain-note">Rain likely - indoor spots favored</span>
                             <?php endif; ?>
                         </div>
 
@@ -2939,11 +3227,7 @@ if ($wanderWDebug === null):
                         class="ai-itinerary-card"
                     >
 
-                        <div
-                            class="ai-itinerary-icon"
-                        >
-                            🌿
-                        </div>
+                        
 
                         <div>
 
@@ -3044,7 +3328,7 @@ if ($wanderWDebug === null):
                                         title="Drag to reorder"
                                     >⠿</span>
 
-                                    🕐
+                                   
 
                                     <?php
                                     echo htmlspecialchars(
@@ -3071,8 +3355,8 @@ if ($wanderWDebug === null):
 
                                     <?php
                                     echo $isBreak
-                                        ? "🍴"
-                                        : "📍";
+                                        ? ""
+                                        : "";
                                     ?>
 
                                     <?php
@@ -3108,7 +3392,7 @@ if ($wanderWDebug === null):
                                         $isBreak
                                     ): ?>
 
-                                        🍴 Lunch break
+                                        Lunch break
 
                                         <?php if (
                                             !empty(
@@ -3118,7 +3402,7 @@ if ($wanderWDebug === null):
 
                                             <br>
 
-                                            📍
+                                           
                                             <?php
                                             echo htmlspecialchars(
                                                 $schedulePlace["address"]
@@ -3145,7 +3429,7 @@ if ($wanderWDebug === null):
 
                                     <?php else: ?>
 
-                                        ⏱️ Visit:
+                                        ⏱Visit:
 
                                         <?php
                                         echo (int)(
@@ -3159,7 +3443,7 @@ if ($wanderWDebug === null):
 
                                         <br>
 
-                                        🚗 Estimated travel:
+                                        Estimated travel:
 
                                         <?php
                                         echo (int)(
@@ -3173,7 +3457,7 @@ if ($wanderWDebug === null):
 
                                         <br>
 
-                                        📏 Distance:
+                                        Distance:
 
                                         <?php
                                         echo htmlspecialchars(
@@ -3196,7 +3480,7 @@ if ($wanderWDebug === null):
 
                                             <br>
 
-                                            🕐 Opening hours:
+                                            Opening hours:
 
                                             <?php
                                             echo htmlspecialchars(
@@ -3221,7 +3505,7 @@ if ($wanderWDebug === null):
 
                                     <div class="timeline-reason">
 
-                                        🤖
+                                       
 
                                         <?php
                                         echo htmlspecialchars(
@@ -3247,7 +3531,7 @@ if ($wanderWDebug === null):
                                         rel="noopener noreferrer"
                                     >
 
-                                        🗺️ Open in Google Maps
+                                        Open in Google Maps
 
                                     </a>
 
@@ -3289,7 +3573,7 @@ if ($wanderWDebug === null):
 
     <div class="footer-logo">
 
-        ✈ Trip<span>Nest</span>
+        Trip<span>Nest</span>
 
     </div>
 
@@ -3393,12 +3677,12 @@ if ($wanderWDebug === null):
             if (data.success) {
                 window.location.reload();
             } else {
-                note.textContent = "⚠️ " + (data.error || "Could not save the new order.");
+                note.textContent = "" + (data.error || "Could not save the new order.");
                 note.style.color = "#b91c1c";
             }
         })
         .catch(function () {
-            note.textContent = "⚠️ Could not reach the server to save the new order.";
+            note.textContent = "Could not reach the server to save the new order.";
             note.style.color = "#b91c1c";
         });
     }

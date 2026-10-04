@@ -386,9 +386,7 @@ if (
 
     <a href="dashboard.php" class="logo">
 
-        <span class="logo-icon">
-            ✈
-        </span>
+        
 
         <span>
             Trip<span>Nest</span>
@@ -478,7 +476,7 @@ if (
 
         <h1>
 
-            📍 Explore Places in
+            Explore Places in
             <span>
                 <?php
                 echo htmlspecialchars(
@@ -525,7 +523,7 @@ if (
 
             <p>
 
-                📍 Latitude:
+                Latitude:
                 <?php
                 echo htmlspecialchars(
                     $latitude
@@ -534,7 +532,7 @@ if (
 
                 &nbsp;&nbsp;
 
-                📍 Longitude:
+                Longitude:
                 <?php
                 echo htmlspecialchars(
                     $longitude
@@ -587,7 +585,7 @@ if (
 
             <h2>
 
-                🎯
+               
                 <?php
                 echo count($places);
                 ?>
@@ -621,7 +619,7 @@ if (
                         <?php
 
                         $category =
-                            strtolower(
+                            mb_strtolower(
                                 $place["category"]
                             );
 
@@ -633,7 +631,7 @@ if (
                             ) !== false
                         ) {
 
-                            echo "🏛️";
+                            echo "";
 
                         } elseif (
                             strpos(
@@ -642,7 +640,7 @@ if (
                             ) !== false
                         ) {
 
-                            echo "🌄";
+                            echo "";
 
                         } elseif (
                             strpos(
@@ -651,7 +649,7 @@ if (
                             ) !== false
                         ) {
 
-                            echo "🎨";
+                            echo "";
 
                         } elseif (
                             strpos(
@@ -660,7 +658,7 @@ if (
                             ) !== false
                         ) {
 
-                            echo "🦁";
+                            echo "";
 
                         } elseif (
                             strpos(
@@ -669,7 +667,7 @@ if (
                             ) !== false
                         ) {
 
-                            echo "🎢";
+                            echo "";
 
                         } elseif (
                             strpos(
@@ -678,11 +676,11 @@ if (
                             ) !== false
                         ) {
 
-                            echo "🏰";
+                            echo "";
 
                         } else {
 
-                            echo "📍";
+                            echo "";
 
                         }
 
@@ -721,7 +719,7 @@ if (
 
                         <p>
 
-                            📍
+                           
                             <strong>
                                 Location:
                             </strong>
@@ -748,7 +746,7 @@ if (
 
                             <p>
 
-                                🕐
+                               
                                 <strong>
                                     Opening Hours:
                                 </strong>
@@ -771,7 +769,7 @@ if (
 
                             <p>
 
-                                💰
+                               
                                 <strong>
                                     Fee:
                                 </strong>
@@ -804,7 +802,7 @@ if (
                                     rel="noopener noreferrer"
                                 >
 
-                                    🌐 Visit Website →
+                                    Visit Website →
 
                                 </a>
 
@@ -831,7 +829,7 @@ if (
         <div class="no-places">
 
             <div style="font-size:50px;">
-                🔍
+               
             </div>
 
 
@@ -876,7 +874,7 @@ if (
             class="dashboard-secondary-btn"
         >
 
-            🌍 Change Destination
+            Change Destination
 
         </a>
 
@@ -897,7 +895,7 @@ if (
 
     <div class="footer-logo">
 
-        ✈ Trip<span>Nest</span>
+        Trip<span>Nest</span>
 
     </div>
 

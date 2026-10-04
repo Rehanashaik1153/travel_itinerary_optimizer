@@ -4,7 +4,7 @@
    WANDERAI - EXCLUDE / RESTORE A PLACE FROM A TRIP
    =====================================================
 
-   Lets a user say "don't recommend this place" (🚫) or
+   Lets a user say "don't recommend this place" () or
    undo that later. The excluded list is stored per trip
    as a JSON array of place names in trips.excluded_places,
    and itinerary.php filters these out before scoring or
@@ -90,13 +90,13 @@ if (!empty($trip["excluded_places"])) {
     }
 }
 
-$normalizedTarget = strtolower($placeName);
+$normalizedTarget = mb_strtolower($placeName);
 
 $excludedPlaces = array_values(
     array_filter(
         $excludedPlaces,
         function ($name) use ($normalizedTarget) {
-            return strtolower(trim((string)$name)) !== $normalizedTarget;
+            return mb_strtolower(trim((string)$name)) !== $normalizedTarget;
         }
     )
 );

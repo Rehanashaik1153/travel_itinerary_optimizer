@@ -1,0 +1,68 @@
+{
+    "success": true,
+    "message": "2 places discovered dynamically.",
+    "places": [
+        {
+            "name": "Arulmigu Manneaswarar Temple, Annur",
+            "category": "Religious",
+            "place_type": "Religious",
+            "lat": 11.232683,
+            "lon": 77.103642,
+            "latitude": 11.232683,
+            "longitude": 77.103642,
+            "distance_km": 0,
+            "website": "https://en.wikipedia.org/?curid=70676949",
+            "phone": "",
+            "opening_hours": "",
+            "fee": "",
+            "charge": "",
+            "cuisine": "",
+            "address": "",
+            "stars": "",
+            "description": "Historic Hindu temple in Tamil Nadu, India",
+            "osm_type": "",
+            "osm_id": "",
+            "osm_url": ""
+        },
+        {
+            "name": "Sri Venkatesa Perumal Temple (Melathiruppathi) – Mondipalayam",
+            "category": "Religious",
+            "place_type": "Religious",
+            "lat": 11.294238,
+            "lon": 77.164705,
+            "latitude": 11.294238,
+            "longitude": 77.164705,
+            "distance_km": 9.55,
+            "website": "https://en.wikipedia.org/?curid=28306111",
+            "phone": "",
+            "opening_hours": "",
+            "fee": "",
+            "charge": "",
+            "cuisine": "",
+            "address": "",
+            "stars": "",
+            "description": "Hindu temple in Tamil Nadu, India",
+            "osm_type": "",
+            "osm_id": "",
+            "osm_url": ""
+        }
+    ],
+    "accommodation_count": 0,
+    "places_api_success": true,
+    "accommodation_api_success": true,
+    "search_areas_used": 1,
+    "destination": "",
+    "radius": 12000,
+    "category_counts": {
+        "Religious": 2
+    },
+    "data_source": "wikipedia",
+    "successful_server": "en.wikipedia.org",
+    "failed_servers": [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+    ],
+    "raw_element_count": 2
+}
