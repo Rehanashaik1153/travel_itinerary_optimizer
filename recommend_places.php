@@ -410,11 +410,15 @@ function wanderRecommendIsBlockedPlace($place)
         'railway station',
         'train station',
         'airport',
+        'aerodrome',
         'helipad',
         'hospital',
         'clinic',
+        'dispensary',
         'pharmacy',
         'police station',
+        'police line',
+        'police headquarters',
         'fire station',
         'post office',
         'bank',
@@ -422,9 +426,49 @@ function wanderRecommendIsBlockedPlace($place)
         'school',
         'college',
         'university',
+        'academy',
         'industrial',
         'warehouse',
-        'cemetery'
+        'cemetery',
+        'ministry',
+        'secretariat',
+        'election commission',
+        'planning commission',
+        'finance commission',
+        'commission of india',
+        'commission',
+        'tribunal',
+        'council',
+        'board of',
+        'department of',
+        'prison',
+        'prisons',
+        'jail',
+        'court',
+        'high court',
+        'supreme court',
+        'cantonment',
+        'barracks',
+        'parliament attack',
+        'attack',
+        'bombing',
+        'riot',
+        'massacre',
+        'death',
+        'deaths',
+        'murder',
+        'suicide',
+        'crime',
+        'battle of',
+        'constituency',
+        'lok sabha',
+        'rajya sabha',
+        'vidhan sabha',
+        'trading corporation',
+        'corporation building',
+        'corporate office',
+        'ceremony',
+        'oath of office'
     ];
 
     foreach ($blockedWords as $word) {
@@ -549,7 +593,8 @@ function wanderRecommendInterestMatches(
                 $type === 'nature' ||
                 $type === 'waterfall' ||
                 $type === 'beach' ||
-                $type === 'tourist'
+                $type === 'tourist' ||
+                preg_match('/cave|caves|trek|trekking|peak|hill|valley|falls|climbing|safari|wildlife|camp|viewpoint|rafting|valley/', $combined)
             )
         ) {
             $matches++;
@@ -597,7 +642,10 @@ function wanderRecommendInterestMatches(
         if (
             strpos($interest, 'food') !== false
             &&
-            $type === 'food'
+            (
+                $type === 'food' ||
+                preg_match('/restaurant|cafe|coffee|tea|dining|cuisine|bakery|food/', $combined)
+            )
         ) {
             $matches++;
             continue;
@@ -634,6 +682,7 @@ function wanderRecommendInterestMatches(
     if ($matches === 0) {
 
         $interestWords = [
+            'adventure'     => '/cave|caves|trek|peak|hill|valley|waterfall|falls|safari|wildlife|viewpoint|camp|rafting|adventure/',
             'nature'        => '/park|garden|lake|forest|hill|valley|river|island|reserve|sanctuary|waterfall|falls|beach|viewpoint|peak|mountain|dam|backwater|botanical|wildlife|cave/',
             'scenic'        => '/park|garden|lake|forest|hill|valley|river|island|waterfall|falls|beach|viewpoint|peak|mountain|dam|backwater/',
             'landscape'     => '/park|lake|forest|hill|valley|river|waterfall|falls|viewpoint|peak|mountain/',
@@ -641,6 +690,7 @@ function wanderRecommendInterestMatches(
             'history'       => '/fort|palace|museum|monument|memorial|heritage|ruins|tomb|archaeolog|historic|old town|stupa|monastery/',
             'heritage'      => '/fort|palace|museum|monument|memorial|heritage|ruins|tomb|archaeolog|historic|old town/',
             'shopping'      => '/market|mall|bazaar|bazar|shopping|mart|plaza|souk|emporium/',
+            'food'          => '/restaurant|cafe|coffee|tea|cuisine|food|bakery|dhaba/',
             'entertainment' => '/theme park|amusement|water park|cinema|theatre|theater|zoo|aquarium|stadium|arcade|bowling|park|show/',
         ];
 
@@ -1221,106 +1271,67 @@ function wanderRecommendCategoryCap(
     $availableCounts,
     $numberOfDays = 1
 ) {
-    /*
-       Food places double as the lunch spot for EVERY day
-       of the trip (see findLunchFoodPlace in
-       generate_itinerary.php), not just a single
-       "recommended place to visit". Capping food at 1 for
-       the whole trip meant only day 1 ever got a real
-       restaurant and every other day fell back to a
-       placeholder "Lunch Break" with no actual place.
-       Always allow enough food places for one per day,
-       plus a spare.
-    */
+    $days = max(1, (int)$numberOfDays);
 
+    /* Food: allow enough restaurants for each day plus spare */
     if ($type === 'food') {
-        return max(2, (int)$numberOfDays + 1);
+        return max(2, $days + 1);
     }
-
-
-    /*
-       When the user selected an interest, matching places
-       can appear more often. Still, duplicate-like types
-       are limited to keep the itinerary useful.
-    */
 
     if ($hasInterests) {
-
         if ($matchingInterests > 0) {
-
             if ($type === 'waterfall') {
-                return 2;
+                return max(2, (int)ceil($days * 1.5));
             }
-
             if ($type === 'nature') {
-                return 2;
+                return max(3, (int)ceil($days * 2.0));
             }
-
             if ($type === 'culture') {
-                return 4;
+                return max(4, (int)ceil($days * 2.5));
             }
-
             if ($type === 'religious') {
-                return 3;
+                return max(3, (int)ceil($days * 1.5));
             }
-
             if ($type === 'beach') {
-                return 3;
+                return max(3, (int)ceil($days * 1.5));
             }
-
-            return 3;
+            return max(3, (int)ceil($days * 1.5));
         }
 
-        /*
-           Non-matching categories are secondary.
-        */
-
+        /* Non-matching categories */
         if ($type === 'shopping') {
-            return 1;
+            return max(1, (int)ceil($days * 0.5));
         }
-
-        return 2;
+        return max(2, (int)ceil($days * 1.0));
     }
 
-
-    /*
-       No interests:
-       deliberately create a balanced itinerary.
-    */
-
-    if ($type === 'waterfall') {
-        return 2;
-    }
-
-    if ($type === 'nature') {
-        return 2;
-    }
-
-    if ($type === 'beach') {
-        return 2;
-    }
-
+    /* No interests: balanced caps scaled with trip duration */
     if ($type === 'culture') {
-        return 2;
+        return max(3, (int)ceil($days * 1.8));
     }
-
+    if ($type === 'nature') {
+        return max(3, (int)ceil($days * 1.5));
+    }
+    if ($type === 'waterfall') {
+        return max(2, (int)ceil($days * 1.2));
+    }
+    if ($type === 'beach') {
+        return max(2, (int)ceil($days * 1.2));
+    }
     if ($type === 'religious') {
-        return 2;
+        return max(3, (int)ceil($days * 1.2));
     }
-
     if ($type === 'entertainment') {
-        return 1;
+        return max(2, (int)ceil($days * 1.0));
     }
-
     if ($type === 'shopping') {
-        return 1;
+        return max(2, (int)ceil($days * 0.8));
     }
-
     if ($type === 'tourist') {
-        return 2;
+        return max(3, (int)ceil($days * 1.5));
     }
 
-    return 1;
+    return max(2, (int)ceil($days * 1.0));
 }
 
 

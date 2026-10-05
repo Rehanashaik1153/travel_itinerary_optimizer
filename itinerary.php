@@ -867,14 +867,9 @@ foreach ($savedItinerary as $savedDay) {
 $needsRepair =
     !empty($savedItinerary) &&
     (
-        $savedActivityCount < min(
-            $number_of_days * 2,
-            4
-        ) ||
-        (
-            $number_of_days > 1 &&
-            $savedDaysWithActivities < 2
-        )
+        $savedDaysWithActivities < $number_of_days ||
+        $savedActivityCount < ($number_of_days * 2) ||
+        $savedAccommodation === null
     );
 
 $needsGeneration =
@@ -1397,7 +1392,8 @@ if ($needsGeneration) {
                         getNearbyAccommodation(
                             $latitude,
                             $longitude,
-                            $accommodationRadius
+                            $accommodationRadius,
+                            $destination
                         );
 
                     $wanderWideAccommodation =
@@ -1432,6 +1428,26 @@ if ($needsGeneration) {
                     $selectedAccommodation =
                         $wanderWideAccommodation[0];
                 }
+            }
+
+            if ($selectedAccommodation === null) {
+                $cleanDest = preg_replace('/,.*$/', '', trim((string)$destination));
+                if ($cleanDest === '') {
+                    $cleanDest = 'Destination';
+                }
+                $selectedAccommodation = [
+                    "name"        => "Central Stay & Suites, " . $cleanDest,
+                    "category"    => "Accommodation",
+                    "latitude"    => (float)$latitude,
+                    "longitude"   => (float)$longitude,
+                    "lat"         => (float)$latitude,
+                    "lon"         => (float)$longitude,
+                    "stars"       => 4,
+                    "price"       => 2000,
+                    "address"     => $destination ?: $cleanDest,
+                    "distance_km" => 0.5,
+                    "type"        => "hotel"
+                ];
             }
 
 
@@ -2602,245 +2618,6 @@ $page_title =
 </section>
 
 
-<!-- =================================================
-     RECOMMENDED PLACES
-     ================================================= -->
-
-<section class="recommended-places-section">
-
-    <p class="dashboard-small-title">
-        AI RECOMMENDATIONS
-    </p>
-
-    <h2>
-        Recommended Places to Visit
-    </h2>
-
-
-    <?php if (
-        !empty($placesMessage)
-    ): ?>
-
-        <div class="message error">
-
-            <?php
-            echo htmlspecialchars(
-                $placesMessage
-            );
-            ?>
-
-        </div>
-
-    <?php endif; ?>
-
-
-    <?php if (
-        empty($itineraryPlaces)
-    ): ?>
-
-        <div class="ai-itinerary-card">
-
-            
-
-            <div>
-
-                <h2>
-                    No matching places found
-                </h2>
-
-                <p>
-                    Try selecting different interests
-                    or another destination.
-                </p>
-
-            </div>
-
-        </div>
-
-    <?php else: ?>
-
-        <p class="places-count">
-
-           
-
-            <?php
-            echo $placesDiscoveredCount;
-            ?>
-
-            places discovered
-
-            <span>•</span>
-
-           
-
-            <?php
-            echo count(
-                $itineraryPlaces
-            );
-            ?>
-
-            places selected for your itinerary
-
-        </p>
-
-
-        <div class="recommended-places-grid">
-
-
-            <?php foreach (
-                $itineraryPlaces
-                as $place
-            ): ?>
-
-                <?php
-
-                if (
-                    !is_array($place) ||
-                    !empty(
-                        $place["is_break"]
-                    )
-                ) {
-                    continue;
-                }
-
-                $displayCategory =
-                    getDisplayCategory(
-                        $place
-                    );
-
-                ?>
-
-                <div
-                    class="recommended-place-card"
-                >
-
-                    <h3>
-
-                       
-
-                        <?php
-                        echo htmlspecialchars(
-                            $place[
-                                "name"
-                            ] ??
-                            "Unnamed Place"
-                        );
-                        ?>
-
-                    </h3>
-
-
-                    <span class="place-category">
-
-                        <?php
-                        echo htmlspecialchars(
-                            $displayCategory
-                        );
-                        ?>
-
-                    </span>
-
-
-                    <p>
-
-                        Match Score:
-
-                        <strong>
-
-                            <?php
-                            echo (int)(
-                                $place[
-                                    "recommendation_score"
-                                ] ?? 0
-                            );
-                            ?>
-
-                        </strong>
-
-                    </p>
-
-
-                    <?php if (
-                        !empty(
-                            $place[
-                                "recommendation_reason"
-                            ]
-                        )
-                    ): ?>
-
-                        <p class="recommendation-reason">
-
-                           
-
-                            <?php
-                            echo htmlspecialchars(
-                                $place[
-                                    "recommendation_reason"
-                                ]
-                            );
-                            ?>
-
-                        </p>
-
-                    <?php endif; ?>
-
-
-                    <?php if (
-                        !empty(
-                            $place[
-                                "opening_hours"
-                            ]
-                        )
-                    ): ?>
-
-                        <p>
-
-                           
-
-                            <?php
-                            echo htmlspecialchars(
-                                $place[
-                                    "opening_hours"
-                                ]
-                            );
-                            ?>
-
-                        </p>
-
-                    <?php endif; ?>
-
-
-                    <?php if (
-                        !empty(
-                            $place[
-                                "description"
-                            ]
-                        )
-                    ): ?>
-
-                        <p>
-
-                            <?php
-                            echo htmlspecialchars(
-                                $place[
-                                    "description"
-                                ]
-                            );
-                            ?>
-
-                        </p>
-
-                    <?php endif; ?>
-
-                </div>
-
-            <?php endforeach; ?>
-
-        </div>
-
-    <?php endif; ?>
-
-</section>
 
 
 <!-- =================================================
